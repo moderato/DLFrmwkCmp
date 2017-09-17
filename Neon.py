@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import h5py
 from sklearn import model_selection as ms
 from sys import platform
 from prp_img import getImageSets
@@ -14,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 5
+epoch_num = 50
 batch_size = 128
 
 from neon.backends import gen_backend, cleanup_backend
@@ -50,13 +51,11 @@ class SelfCallback(LossCallback):
         self.total_batch_index += 1
 
 mlp = None
-epoch_num = 50
-
 neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.0005, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": True, "gpu": True}
+run_or_not = {"cpu": True, "mkl": True, "gpu": False}
 
 cleanup_backend()
 
@@ -110,7 +109,7 @@ for b in neon_backends:
         mlp.initialize(neon_train_set, neon_cost)
 
         # Callbacks: validate on validation set
-        callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file=root+"/callback_data_{}.h5".format(b))
+        callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file=root+"/saved_data/callback_data_neon_{}.h5".format(b))
         callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, epoch_freq=1))
 
         # Fit
@@ -148,6 +147,15 @@ for b in neon_backends:
         start = time.time()
         neon_error_top5_t = mlp.eval(neon_test_set, metric=TopKMisclassification(5))*100
         print('Top 5 Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_top5_t[2], time.time() - start))
+
+        f = h5py.File(root+"/saved_data/callback_data_neon_{}.h5".format(b), 'a')
+        f['.']['config'].attrs['validation_acc_1'] = 100.0 - neon_error_mis[0]
+        f['.']['config'].attrs['validation_acc_1'] = 100.0 - neon_error_top3[2]
+        f['.']['config'].attrs['validation_acc_1'] = 100.0 - neon_error_top5[2]
+        f['.']['config'].attrs['test_acc_1'] = 100.0 - neon_error_mis_t[0]
+        f['.']['config'].attrs['test_acc_1'] = 100.0 - neon_error_top3_t[2]
+        f['.']['config'].attrs['test_acc_1'] = 100.0 - neon_error_top5_t[2]
+        f.close()
 
         cleanup_backend()
         mlp = None
