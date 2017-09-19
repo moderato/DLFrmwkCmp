@@ -54,8 +54,8 @@ mlp = None
 neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
-neon_lr = {"cpu": 0.01, "mkl": 0.0005, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": True, "gpu": False}
+neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
+run_or_not = {"cpu": False, "mkl": True, "gpu": False}
 
 cleanup_backend()
 
@@ -64,7 +64,7 @@ for b in neon_backends:
         print("Use {} as backend.".format(b))
 
         # Set up backend
-        # backend: 'cpu' for single, 'mkl' for multi-thread cpu, and 'gpu' for gpu
+        # backend: 'cpu' for single cpu, 'mkl' for cpu using mkl library, and 'gpu' for gpu
         be = gen_backend(backend=b, batch_size=batch_size, rng_seed=542, datatype=np.float32)
         print(type(be))
 
