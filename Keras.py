@@ -45,6 +45,7 @@ class LossHistory(keras_callback):
         self.f = h5py.File(filename, 'w')
         
         try:
+            # config group for some common params
             config = self.f.create_group('config')
             config.attrs["total_epochs"] = self.epoch_num
 
@@ -64,6 +65,7 @@ class LossHistory(keras_callback):
             end_time.attrs['units'] = 'seconds'
             train_batch = t.create_dataset('train_batch', (self.max_total_batch,)) # Same as above
 
+            # Mark which batches are the end of an epoch
             time_markers = self.f.create_group('time_markers')
             time_markers.attrs['epochs_complete'] = self.epoch_num
             train_batch = time_markers.create_dataset('minibatch', (self.epoch_num,))
@@ -75,7 +77,7 @@ class LossHistory(keras_callback):
         try:
             self.f['.']['time']['train']['start_time'][0] = default_timer()
         except Exception as e:
-            self.f.close()
+            self.f.close() # Same to above
             raise e
 
     def on_epoch_end(self, epoch, logs={}):
