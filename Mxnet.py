@@ -15,11 +15,12 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 1
+epoch_num = 50
 batch_size = 128
 
 import mxnet as mx
 import logging
+from timeit import default_timer
 logging.getLogger().setLevel(logging.DEBUG)  # logging to stdout
 
 class MxCustomInit(mx.initializer.Initializer):
@@ -41,51 +42,16 @@ class MxCustomInit(mx.initializer.Initializer):
                 arr[:] = v
 
 class MxBatchCallback(object):
-    def __init__(self, f, batch_size, auto_reset=True):
-        self.batch_size = batch_size
-        self.init = False
-        self.tic = 0
-        self.last_count = 0
-        self.batch_count = 0
-        self.auto_reset = auto_reset
-        self.f = f
+    def __init__(self):
+        pass
 
     def __call__(self, param):
-        count = param.nbatch
-        if self.last_count > count:
-            self.init = False
-        self.last_count = count
-        self.batch_count += 1
+        pass
 
-        if self.init:
-            batch_time = time.time() - self.tic # self.tic: batch start time
-            self.f['.']['time']['train_batch'][self.batch_count-1] = batch_time
-
-            # param.epoch: Epoch index
-            # param.eval_metric: Real time metrics (Use param.eval_metric.get_name_value() to get it)
-            # param.nbatch: Current batch count (in one epoch)
-            # param.locals: Miscellaneous
-
-            self.f['.']['cost']['train'][self.batch_count-1] = np.float32(param.eval_metric.get_name_value()[1][1])
-            self.tic = time.time()
-        else:
-            self.init = True
-            self.tic = time.time()
-
-
-class MxEpochCallback(object):
-    def __init__(self, prefix, batch_size, epoch_num, auto_reset=True):
-        self.prefix = prefix
-        self.batch_size = batch_size
-        self.epoch_num = epoch_num
-        self.init = False
-        self.tic = 0
-        self.last_count = 0
-        self.auto_reset = auto_reset
-
-    def __call__(self, iter_no, sym, arg, aux):
-        if (iter_no + 1) == self.epoch_num:
-            mx.model.save_checkpoint(self.prefix, iter_no+1, sym, arg, aux)
+        # param.epoch: Epoch index
+        # param.eval_metric: Real time metrics (Use param.eval_metric.get_name_value() to get it)
+        # param.nbatch: Current batch count (in one epoch)
+        # param.locals: Miscellaneous
 
 
 # Prepare image sets
@@ -140,32 +106,86 @@ for layer in mx_softmax.list_arguments():
         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
-# create a trainable module on CPU
-mx_model = mx.mod.Module(context = mx.cpu(), symbol = mx_softmax)
+backends = ['gpu']
+for b in backends:
+    # create a trainable module on CPU/GPU
+    mx_model =None
+    if b == 'cpu':
+        mx_model = mx.mod.Module(context = mx.cpu(), symbol = mx_softmax)
+    else:
+        mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
-max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
-filename = root + "/saved_data/callback_data_mxnet_cpu.h5"
-f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
+    max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
+    filename = root + "/saved_data/callback_data_mxnet_{}.h5".format(b)
+    f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
-try:
-    # Train the model
-    # Currently no solution to reproducibility. Eyes on issue 47.
-    mx_model.fit(mx_train_set, # train data
-                 eval_data = mx_valid_set, # validation data
-                 num_epoch = epoch_num,
-                 # initializer = MxCustomInit(mx_init_dict), # Bugs. Don't use it now.
-                 eval_metric = ['acc', 'ce'], # Calculate accuracy and cross-entropy
-                 optimizer = 'sgd',
-                 optimizer_params = {'learning_rate': 0.1, 'momentum': 0.9},
-                 epoch_end_callback = MxEpochCallback("try", batch_size, epoch_num),
-                 batch_end_callback = MxBatchCallback(f, batch_size))
-except KeyboardInterrupt:
-    pass
-except Exception as e:
-    raise e
-finally:
-    f.close()
+    try:
+        # # Train the model
+        # # Currently no solution to reproducibility. Eyes on issue 47.
 
+        # allocate memory given the input data and label shapes
+        mx_model.bind(data_shapes=mx_train_set.provide_data, label_shapes=mx_train_set.provide_label)
+        # initialize parameters by uniform random numbers
+        mx_model.init_params()
+        # use SGD with learning rate 0.1 to train
+        mx_model.init_optimizer(optimizer='sgd', optimizer_params=(('learning_rate', 0.01), ('momentum', 0.9)))
+        # use accuracy as the metric
+        acc = mx.metric.create('acc')
+        mx_metric = mx.metric.create([acc, 'ce'])
+        # train 5 epochs, i.e. going over the data iter one pass
 
-score = mx_model.score(mx_test_set, ['acc'])
-print("Accuracy score is %f" % (score[0][1])) # 0 for acc index in metric list, 1 for 
+        batch_count = 0
+        f['.']['time']['train']['start_time'][0] = time.time()
+        for epoch in range(epoch_num):
+            mx_train_set.reset()
+            mx_valid_set.reset()
+            mx_metric.reset()
+
+            epoch_batch = 0 # The batch index in this epoch
+            for batch in mx_train_set:
+                start = default_timer()
+                batch_count += 1
+                epoch_batch += 1
+                mx_model.forward(batch, is_train=True)       # compute predictions
+                mx_model.update_metric(mx_metric, batch.label)  # accumulate prediction accuracy
+                mx_model.backward()                          # compute gradients
+                mx_model.update()                            # update parameters
+
+                # Save batch time
+                train_batch_time = default_timer() - start
+                f['.']['time']['train_batch'][batch_count-1] = train_batch_time
+
+                # Save training loss
+                f['.']['cost']['train'][batch_count-1] = np.float32(mx_metric.get_name_value()[1][1])
+                print("Epoch: {}, batch: {}, accuracy: {:.3f}, loss: {:.6f}"\
+                    .format(epoch, epoch_batch-1, mx_metric.get_name_value()[0][1], mx_metric.get_name_value()[1][1]))
+            
+            print('Epoch %d, Training %s' % (epoch, mx_metric.get_name_value()))
+
+            mx_metric.reset()
+            for batch in mx_valid_set:
+                mx_model.forward(batch, is_train=False)      # validation instead of training
+                mx_model.update_metric(mx_metric, batch.label)
+                # No need for backward or update
+
+            # Save validation loss and batch marker for the whole training process
+            f['.']['cost']['loss'][epoch] = np.float32(mx_metric.get_name_value()[1][1])
+            f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
+
+            print('Epoch %d, Validation %s' % (epoch, mx_metric.get_name_value()))
+
+        # Save related params
+        f['.']['time']['train']['end_time'][0] = time.time()
+        f['.']['config'].attrs["total_minibatches"] = batch_count
+        f['.']['time_markers'].attrs['minibatches_complete'] = batch_count
+
+        score = mx_model.score(mx_test_set, ['acc'])
+        print("Accuracy score is %f" % (score[0][1]))
+        
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        raise e
+    finally:
+        print("Close file descriptor")
+        f.close()
