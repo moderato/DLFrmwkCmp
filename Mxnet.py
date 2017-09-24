@@ -160,6 +160,8 @@ for b in backends:
                 print("Epoch: {}, batch: {}, accuracy: {:.3f}, loss: {:.6f}"\
                     .format(epoch, epoch_batch-1, mx_metric.get_name_value()[0][1], mx_metric.get_name_value()[1][1]))
             
+            # Save batch marker
+            f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
             print('Epoch %d, Training %s' % (epoch, mx_metric.get_name_value()))
 
             mx_metric.reset()
@@ -168,9 +170,8 @@ for b in backends:
                 mx_model.update_metric(mx_metric, batch.label)
                 # No need for backward or update
 
-            # Save validation loss and batch marker for the whole training process
+            # Save validation loss for the whole training process
             f['.']['cost']['loss'][epoch] = np.float32(mx_metric.get_name_value()[1][1])
-            f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
 
             print('Epoch %d, Validation %s' % (epoch, mx_metric.get_name_value()))
 

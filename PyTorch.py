@@ -4,6 +4,8 @@ import time
 from sklearn import model_selection as ms
 from sys import platform
 from prp_img import getImageSets
+import DLHelper
+from timeit import default_timer
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/GTSRB/try"
@@ -14,7 +16,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 5
+epoch_num = 2
 batch_size = 128
 
 import torch
@@ -76,42 +78,93 @@ torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, 
 
 torch_model = ConvNet()
 optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
+max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
 
-def train(epoch):
-    torch_model.train()
-    for batch_idx, (data, target) in enumerate(torch_train_set):
-#         if args.cuda:
-#             data, target = data.cuda(), target.cuda()
+def train(train_set, batch_count, gpu = False, epoch = None, f = None):
+    torch_model.train() # Set the model to training mode
+    for batch_idx, (data, target) in enumerate(train_set):
+        batch_count += 1
+        if gpu:
+            data, target = data.cuda(), target.cuda()
+        start = default_timer()
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = torch_model(data)
         cost = torch.nn.CrossEntropyLoss(size_average=True)
-        loss = cost(output, target)
-        loss.backward()
+        train_loss = cost(output, target)
+        train_loss.backward()
         optimizer.step()
-        if batch_idx % 100 == 0:
+
+        # Save batch time
+        train_batch_time = default_timer() - start
+        f['.']['time']['train_batch'][batch_count-1] = train_batch_time
+
+        # Save training loss
+        f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])
+
+        if batch_idx % 10 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(torch_train_set.dataset),
-                100. * batch_idx / len(torch_train_set), loss.data[0]))
-def test():
-    torch_model.eval()
-    test_loss = 0
+                epoch, batch_idx * len(data), len(train_set.dataset),
+                100. * batch_idx / len(train_set), train_loss.data[0]))
+
+    # Save batch marker
+    f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
+
+def valid(valid_set, gpu = False, epoch = None, f = None):
+    torch_model.eval() # Set the model to testing mode
+    valid_loss = 0
     correct = 0
-    for data, target in torch_test_set:
-#         if args.cuda:
-#             data, target = data.cuda(), target.cuda()
+    for data, target in valid_set:
+        if gpu:
+            data, target = data.cuda(), target.cuda()
         data, target = Variable(data, volatile=True), Variable(target)
         output = torch_model(data)
         cost = torch.nn.CrossEntropyLoss(size_average=False)
-        test_loss += cost(output, target).data[0] # sum up batch loss
+        valid_loss += cost(output, target).data[0] # sum up batch loss
         pred = output.data.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.data.view_as(pred)).cpu().sum()
 
-    test_loss /= len(torch_test_set.dataset)
-    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        test_loss, correct, len(torch_test_set.dataset),
-        100. * correct / len(torch_test_set.dataset)))
+    valid_loss /= len(valid_set.dataset)
 
-for epoch in range(1, epoch_num + 1):
-    train(epoch)
-test()
+    epoch_str = ""
+    if epoch is not None:
+        f['.']['cost']['loss'][epoch] = np.float32(valid_loss)
+        epoch_str = "\nValid Epoch: {} ".format(epoch)
+    else:
+        epoch_str = "Test set: "
+    print(epoch_str + 'Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        valid_loss, correct, len(valid_set.dataset),
+        100. * correct / len(valid_set.dataset)))
+
+# CPU
+backends = ['cpu']
+for b in backends:
+    use_gpu = (b == 'gpu')
+    batch_count = 0
+
+    filename = root + "/saved_data/callback_data_pytorch_{}.h5".format(b)
+    f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
+    try:
+        for epoch in range(epoch_num):
+
+            # Start training and save start and end time
+            f['.']['time']['train']['start_time'][0] = time.time()
+            train(torch_train_set, batch_count, use_gpu, epoch, f)
+            f['.']['time']['train']['end_time'][0] = time.time()
+
+            # Validation per epoch
+            valid(torch_valid_set, use_gpu, epoch, f)
+
+        # Save total batch count
+        f['.']['config'].attrs["total_minibatches"] = batch_count
+        f['.']['time_markers'].attrs['minibatches_complete'] = batch_count
+
+        # Final test
+        valid(torch_test_set, use_gpu)
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        raise e
+    finally:
+        print("Close file descriptor")
+        f.close()
