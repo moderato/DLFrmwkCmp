@@ -14,7 +14,7 @@ else:
 data_path = root + "/saved_data"
 
 gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet"]
-cpu_backends = ["neon", "neon_mkl", "mxnet"]
+cpu_backends = ["neon", "keras_cntk", "neon_mkl", "mxnet", "pytorch"]
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(1,1,1)

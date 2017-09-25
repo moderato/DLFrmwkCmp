@@ -106,7 +106,7 @@ for layer in mx_softmax.list_arguments():
         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
-backends = ['gpu']
+backends = ['cpu', 'gpu']
 for b in backends:
     # create a trainable module on CPU/GPU
     mx_model =None
@@ -157,6 +157,7 @@ for b in backends:
 
                 # Save training loss
                 f['.']['cost']['train'][batch_count-1] = np.float32(mx_metric.get_name_value()[1][1])
+                f['.']['accuracy']['train'][batch_count-1] = np.float32(mx_metric.get_name_value()[0][1])
                 print("Epoch: {}, batch: {}, accuracy: {:.3f}, loss: {:.6f}"\
                     .format(epoch, epoch_batch-1, mx_metric.get_name_value()[0][1], mx_metric.get_name_value()[1][1]))
             
@@ -170,8 +171,9 @@ for b in backends:
                 mx_model.update_metric(mx_metric, batch.label)
                 # No need for backward or update
 
-            # Save validation loss for the whole training process
+            # Save validation loss for the whole epoch
             f['.']['cost']['loss'][epoch] = np.float32(mx_metric.get_name_value()[1][1])
+            f['.']['accuracy']['valid'][epoch] = np.float32(mx_metric.get_name_value()[0][1])
 
             print('Epoch %d, Validation %s' % (epoch, mx_metric.get_name_value()))
 
@@ -181,6 +183,7 @@ for b in backends:
         f['.']['time_markers'].attrs['minibatches_complete'] = batch_count
 
         score = mx_model.score(mx_test_set, ['acc'])
+        f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1])
         print("Accuracy score is %f" % (score[0][1]))
         
     except KeyboardInterrupt:

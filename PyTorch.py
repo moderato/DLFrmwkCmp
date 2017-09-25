@@ -16,7 +16,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 2
+epoch_num = 50
 batch_size = 128
 
 import torch
@@ -85,6 +85,7 @@ def train(train_set, batch_count, gpu = False, epoch = None, f = None):
     for batch_idx, (data, target) in enumerate(train_set):
         batch_count += 1
         if gpu:
+            print("GPU!!")
             data, target = data.cuda(), target.cuda()
         start = default_timer()
         data, target = Variable(data), Variable(target)
@@ -109,6 +110,8 @@ def train(train_set, batch_count, gpu = False, epoch = None, f = None):
 
     # Save batch marker
     f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
+
+    return batch_count
 
 def valid(valid_set, gpu = False, epoch = None, f = None):
     torch_model.eval() # Set the model to testing mode
@@ -149,7 +152,7 @@ for b in backends:
 
             # Start training and save start and end time
             f['.']['time']['train']['start_time'][0] = time.time()
-            train(torch_train_set, batch_count, use_gpu, epoch, f)
+            batch_count = train(torch_train_set, batch_count, use_gpu, epoch, f)
             f['.']['time']['train']['end_time'][0] = time.time()
 
             # Validation per epoch

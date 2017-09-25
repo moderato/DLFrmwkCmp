@@ -14,7 +14,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 50
+epoch_num = 1
 batch_size = 128
 
 from keras.layers import Conv2D as keras_Conv
@@ -124,7 +124,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = ["theano", "tensorflow"]
+backends = []
 if platform != "darwin":
     backends.append("cntk")
 
