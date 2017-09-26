@@ -100,8 +100,9 @@ def train(train_set, batch_count, gpu = False, epoch = None, f = None):
         train_batch_time = default_timer() - start
         f['.']['time']['train_batch'][batch_count-1] = train_batch_time
 
-        # Save training loss
+        # Save training loss and accuracy
         f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])
+        f['.']['accuracy']['train'][batch_count-1] = np.float32(100. * batch_idx / len(train_set))
 
         if batch_idx % 10 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -131,9 +132,13 @@ def valid(valid_set, gpu = False, epoch = None, f = None):
 
     epoch_str = ""
     if epoch is not None:
+        # Save validation loss and accuracy
         f['.']['cost']['loss'][epoch] = np.float32(valid_loss)
+        f['.']['accuracy']['valid'][epoch] = np.float32(100. * correct / len(valid_set.dataset))
         epoch_str = "\nValid Epoch: {} ".format(epoch)
     else:
+        # Save inference accuracy
+        f['.']['infer_acc']['accuracy'][0] = np.float32(100. * correct / len(valid_set.dataset))
         epoch_str = "Test set: "
     print(epoch_str + 'Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
         valid_loss, correct, len(valid_set.dataset),

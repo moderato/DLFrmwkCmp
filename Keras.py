@@ -4,6 +4,8 @@ import time
 from sklearn import model_selection as ms
 from sys import platform
 from prp_img import getImageSets
+import DLHelper
+from timeit import default_timer
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/GTSRB/try"
@@ -41,48 +43,20 @@ class LossHistory(keras_callback):
         self.filename = filename
         self.batch_time = None
         self.max_total_batch = max_total_batch
-        
-        self.f = h5py.File(filename, 'w')
-        
-        try:
-            # config group for some common params
-            config = self.f.create_group('config')
-            config.attrs["total_epochs"] = self.epoch_num
-
-            cost = self.f.create_group('cost')
-            loss = cost.create_dataset('loss', (self.epoch_num,))
-            loss.attrs['time_markers'] = 'epoch_freq'
-            loss.attrs['epoch_freq'] = 1
-            train = cost.create_dataset('train', (self.max_total_batch,)) # Set size to maximum theoretical value
-            train.attrs['time_markers'] = 'minibatch'
-
-            t = self.f.create_group('time')
-            loss = t.create_dataset('loss', (self.epoch_num,))
-            train = t.create_group('train')
-            start_time = train.create_dataset("start_time", (1,))
-            start_time.attrs['units'] = 'seconds'
-            end_time = train.create_dataset("end_time", (1,))
-            end_time.attrs['units'] = 'seconds'
-            train_batch = t.create_dataset('train_batch', (self.max_total_batch,)) # Same as above
-
-            # Mark which batches are the end of an epoch
-            time_markers = self.f.create_group('time_markers')
-            time_markers.attrs['epochs_complete'] = self.epoch_num
-            train_batch = time_markers.create_dataset('minibatch', (self.epoch_num,))
-        except Exception as e:
-            self.f.close() # Avoid hdf5 runtime error or os error
-            raise e # Catch the exception to close the file, then raise it to stop the program
+        self.f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     
     def on_train_begin(self, logs={}):
         try:
             self.f['.']['time']['train']['start_time'][0] = default_timer()
         except Exception as e:
-            self.f.close() # Same to above
+            self.f.close()
             raise e
 
     def on_epoch_end(self, epoch, logs={}):
         try:
+            print(logs)
             self.f['.']['cost']['loss'][epoch] = np.float32(logs.get('val_loss'))
+            self.f['.']['accuracy']['valid'][epoch] = np.float32(logs.get('val_acc'))
             self.f['.']['time_markers']['minibatch'][epoch] = np.float32(self.batch_count)
         except Exception as e:
             self.f.close()
@@ -98,6 +72,7 @@ class LossHistory(keras_callback):
     def on_batch_end(self, batch, logs={}):
         try:
             self.f['.']['cost']['train'][self.batch_count] = np.float32(logs.get('loss'))
+            self.f['.']['accuracy']['train'][self.batch_count-1] = np.float32(logs.get('acc'))
             self.f['.']['time']['train_batch'][self.batch_count] = (default_timer() - self.batch_time)
             self.batch_count += 1
         except Exception as e:
@@ -109,8 +84,6 @@ class LossHistory(keras_callback):
             self.f['.']['time']['train']['end_time'][0] = default_timer()
             self.f['.']['config'].attrs["total_minibatches"] = self.batch_count
             self.f['.']['time_markers'].attrs['minibatches_complete'] = self.batch_count
-            # self.f['.']['time']['train_batch'].resize((self.batch_count,))
-            self.f.close()
         except Exception as e:
             self.f.close()
             raise e
@@ -124,7 +97,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = []
+backends = ["tensorflow"]
 if platform != "darwin":
     backends.append("cntk")
 
@@ -177,4 +150,6 @@ for b in backends:
 
     # report test accuracy
     keras_test_accuracy = 100*np.sum(np.array(keras_predictions)==np.argmax(keras_test_y, axis=1))/len(keras_predictions)
+    losses.f['.']['infer_acc']['accuracy'][0] = np.float32(keras_test_accuracy)
+    losses.f.close()
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
