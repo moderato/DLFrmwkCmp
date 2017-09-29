@@ -13,8 +13,8 @@ else:
 
 data_path = root + "/saved_data"
 
-gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet"]
-cpu_backends = ["neon", "keras_cntk", "neon_mkl", "mxnet", "pytorch"]
+gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
+cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(1,1,1)
@@ -25,7 +25,7 @@ fig2.suptitle("Training and validation loss versus batch (GPU)", y=0.94)
 fig3 = plt.figure()
 ax3 = fig3.add_subplot(1,1,1)
 fig3.suptitle("Training loss versus time (CPU)", y=0.94)
-fig4, ax4 = plt.subplots(2, 3)
+fig4, ax4 = plt.subplots(3, 3)
 fig4.suptitle("Training and validation loss versus batch (CPU)", y=0.94)
 
 markers = ['o', 'x', 'p', 'v', '+', 's', 'P', '*', 'D', 'h', '8']

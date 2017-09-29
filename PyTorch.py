@@ -15,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 1
+epoch_num = 10
 batch_size = 128
 
 import torch
@@ -75,11 +75,11 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model = ConvNet()
-optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
+torch_model_cpu = ConvNet()
+torch_model_gpu = ConvNet().cuda()
 max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
 
-def train(train_set, f, batch_count, gpu = False, epoch = None):
+def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch = None):
     if gpu:
         torch_model.cuda()
     torch_model.train() # Set the model to training mode
@@ -120,9 +120,7 @@ def train(train_set, f, batch_count, gpu = False, epoch = None):
 
     return batch_count
 
-def valid(valid_set, f, gpu = False, epoch = None):
-    if gpu:
-        torch_model.cuda()
+def valid(torch_model, optimizer, valid_set, f, gpu = False, epoch = None):
     torch_model.eval() # Set the model to testing mode
     valid_loss = 0
     correct = 0
@@ -152,11 +150,14 @@ def valid(valid_set, f, gpu = False, epoch = None):
         valid_loss, correct, len(valid_set.dataset),
         100. * correct / len(valid_set.dataset)))
 
-# CPU
-backends = ['cpu']
+# CPU & GPU
+backends = ['gpu', 'cpu']
 for b in backends:
+    print("Run on {}".format(b))
     use_gpu = (b == 'gpu')
     batch_count = 0
+    torch_model = torch_model_gpu if use_gpu else torch_model_cpu
+    optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
     filename = root + "/saved_data/callback_data_pytorch_{}.h5".format(b)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
@@ -165,18 +166,18 @@ for b in backends:
 
             # Start training and save start and end time
             f['.']['time']['train']['start_time'][0] = time.time()
-            batch_count = train(torch_train_set, f, batch_count, use_gpu, epoch)
+            batch_count = train(torch_model, optimizer, torch_train_set, f, batch_count, use_gpu, epoch)
             f['.']['time']['train']['end_time'][0] = time.time()
 
             # Validation per epoch
-            valid(torch_valid_set, f, use_gpu, epoch)
+            valid(torch_model, optimizer, torch_valid_set, f, use_gpu, epoch)
 
         # Save total batch count
         f['.']['config'].attrs["total_minibatches"] = batch_count
         f['.']['time_markers'].attrs['minibatches_complete'] = batch_count
 
         # Final test
-        valid(torch_test_set, f, use_gpu)
+        valid(torch_model, optimizer, torch_test_set, f, use_gpu)
     except KeyboardInterrupt:
         pass
     except Exception as e:
