@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import time
 from sklearn import model_selection as ms
 from sys import platform
-from prp_img import getImageSets
 import DLHelper
 from timeit import default_timer
 
@@ -13,7 +12,7 @@ else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
 resize_size = (49, 49)
-trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
+trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 1

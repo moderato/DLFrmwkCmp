@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import time
 from sklearn import model_selection as ms
 from sys import platform
-from prp_img import getImageSets
 import DLHelper
 from timeit import default_timer
 
@@ -13,7 +12,7 @@ else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
 resize_size = (49, 49)
-trainImages, trainLabels, testImages, testLabels = getImageSets(root, resize_size)
+trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 1
@@ -101,14 +100,20 @@ def train(train_set, f, batch_count, gpu = False, epoch = None):
         train_batch_time = default_timer() - start
         f['.']['time']['train_batch'][batch_count-1] = train_batch_time
 
+        # Get the accuracy of this batch
+        pred = output.data.max(1, keepdim=True)[1]
+        correct = pred.eq(target.data.view_as(pred)).cpu().sum()
+        acc = 100. * correct / len(data)
+
         # Save training loss and accuracy
         f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])
-        f['.']['accuracy']['train'][batch_count-1] = np.float32(100. * batch_idx / len(train_set))
+        f['.']['accuracy']['train'][batch_count-1] = np.float32(acc)
 
         if batch_idx % 10 == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_set.dataset),
-                100. * batch_idx / len(train_set), train_loss.data[0]))
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f},\tAccuracy: {}/{} ({:.0f}%)'.format(
+                epoch, batch_idx * len(data), len(train_set.dataset),\
+                100. * batch_idx / len(train_set), train_loss.data[0],\
+                correct, len(data), acc))
 
     # Save batch marker
     f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
@@ -148,7 +153,7 @@ def valid(valid_set, f, gpu = False, epoch = None):
         100. * correct / len(valid_set.dataset)))
 
 # CPU
-backends = ['gpu']
+backends = ['cpu']
 for b in backends:
     use_gpu = (b == 'gpu')
     batch_count = 0
