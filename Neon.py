@@ -15,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 1
+epoch_num = 2
 batch_size = 128
 
 from neon.backends import gen_backend, cleanup_backend
@@ -43,61 +43,32 @@ class SelfCallback(LossCallback):
         super(SelfCallback, self).on_train_begin(callback_data, model, epochs)
         
         # Save training time per batch
-        points = callback_data['config'].attrs['total_minibatches']
-        tb = callback_data.create_dataset("time/train_batch", (points,))
+        total_batches = callback_data['config'].attrs['total_minibatches']
+        tb = callback_data.create_dataset("time/train_batch", (total_batches,))
         tb.attrs['time_markers'] = 'minibatch'
 
-        print(epochs)
         acc = callback_data.create_group('accuracy')
         acc_v = acc.create_dataset('valid', (epochs,))
         acc_v.attrs['time_markers'] = 'epoch_freq'
         acc_v.attrs['epoch_freq'] = 1
-        acc_t = acc.create_dataset('train', (points,))
+        acc_t = acc.create_dataset('train', (total_batches,))
         acc_t.attrs['time_markers'] = 'minibatch'
 
     def on_epoch_end(self, callback_data, model, epoch):
-        accuracy = model.eval(self.eval_set, metric=Accuracy())[0]
-        
+        callback_data['accuracy/valid'][epoch] = model.eval(self.eval_set, metric=Accuracy())[0]
+
     def on_minibatch_begin(self, callback_data, model, epoch, minibatch):
         self.train_batch_time = default_timer()
 
     def on_minibatch_end(self, callback_data, model, epoch, minibatch):
         callback_data["time/train_batch"][self.total_batch_index] = (default_timer() - self.train_batch_time)
-        accuracy = model.eval(self.train_set, metric=Accuracy())[0]
         self.total_batch_index += 1
 
 class SelfModel(Model):
     def __init__(self, layers, dataset=None, weights_only=False, name="model", optimizer=None):
         super(SelfModel, self).__init__(layers=layers, dataset=dataset, weights_only=weights_only, name=name, optimizer=optimizer)
 
-    def fit(self, dataset, cost, optimizer, num_epochs, callbacks):
-        self.nbatches = dataset.nbatches
-        self.ndata = dataset.ndata
-        self.total_cost = np.empty([1, 1], dtype=np.float32)
-        self.optimizer = optimizer
-        self.initialize(dataset, cost)
-
-        callbacks.on_train_begin(num_epochs)
-        while self.epoch_index < num_epochs and not self.finished:
-            self.nbatches = dataset.nbatches
-
-            callbacks.on_epoch_begin(self.epoch_index)
-            print("Epoch begin")
-            self._epoch_fit(dataset, callbacks)
-			print("Epoch end")
-            callbacks.on_epoch_end(self.epoch_index)
-
-            self.epoch_index += 1
-
-        callbacks.on_train_end()
-
     def _epoch_fit(self, dataset, callbacks):
-        """
-        Helper function for fit which performs training on a dataset for one epoch.
-
-        Arguments:
-            dataset (NervanaDataIterator): Dataset iterator to perform fit on
-        """
         epoch = self.epoch_index
         self.total_cost[:] = 0
         # iterate through minibatches of the dataset
@@ -106,6 +77,11 @@ class SelfModel(Model):
             self.be.begin(Block.minibatch, mb_idx)
 
             x = self.fprop(x)
+
+            # Save per-minibatch accuracy
+            acc = Accuracy()
+            mstart = callback_data['time_markers/minibatch'][epoch - 1] if epoch > 0 else 0
+            callbacks.callback_data['accuracy/train'][mbstart + mb_idx] = acc(x, t)
 
             self.total_cost[:] = self.total_cost + self.cost.get_cost(x, t)
 
