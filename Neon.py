@@ -15,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 2
+epoch_num = 50
 batch_size = 128
 
 from neon.backends import gen_backend, cleanup_backend
@@ -32,11 +32,11 @@ from timeit import default_timer
 
 # This callback class is actually a mix of LossCallback and MetricCallback
 class SelfCallback(LossCallback):
-    def __init__(self, train_set, eval_set, epoch_freq):
+    def __init__(self, eval_set, test_set, epoch_freq):
         super(SelfCallback, self).__init__(eval_set=eval_set, epoch_freq=epoch_freq)
         self.train_batch_time = None
         self.total_batch_index = 0
-        self.train_set = train_set
+        self.test_set = test_set
         self.metric = Accuracy()
         
     def on_train_begin(self, callback_data, model, epochs):
@@ -54,8 +54,12 @@ class SelfCallback(LossCallback):
         acc_t = acc.create_dataset('train', (total_batches,))
         acc_t.attrs['time_markers'] = 'minibatch'
 
+        acc = callback_data.create_group('infer_acc')
+        acc_v = acc.create_dataset('accuracy', (1,))
+
     def on_epoch_end(self, callback_data, model, epoch):
-        callback_data['accuracy/valid'][epoch] = model.eval(self.eval_set, metric=Accuracy())[0]
+        super(SelfCallback, self).on_epoch_end(callback_data, model, epoch)
+        callback_data['accuracy/valid'][epoch] = model.eval(self.eval_set, metric=Accuracy())[0] * 100.0
 
     def on_minibatch_begin(self, callback_data, model, epoch, minibatch):
         self.train_batch_time = default_timer()
@@ -63,6 +67,9 @@ class SelfCallback(LossCallback):
     def on_minibatch_end(self, callback_data, model, epoch, minibatch):
         callback_data["time/train_batch"][self.total_batch_index] = (default_timer() - self.train_batch_time)
         self.total_batch_index += 1
+
+    def on_train_end(self, callback_data, model):
+        callback_data['infer_acc/accuracy'][0] = model.eval(self.test_set, metric=Accuracy())[0] * 100.0
 
 class SelfModel(Model):
     def __init__(self, layers, dataset=None, weights_only=False, name="model", optimizer=None):
@@ -80,8 +87,8 @@ class SelfModel(Model):
 
             # Save per-minibatch accuracy
             acc = Accuracy()
-            mstart = callback_data['time_markers/minibatch'][epoch - 1] if epoch > 0 else 0
-            callbacks.callback_data['accuracy/train'][mbstart + mb_idx] = acc(x, t)
+            mbstart = callbacks.callback_data['time_markers/minibatch'][epoch - 1] if epoch > 0 else 0
+            callbacks.callback_data['accuracy/train'][mbstart + mb_idx] = acc(x, t) * 100.0
 
             self.total_cost[:] = self.total_cost + self.cost.get_cost(x, t)
 
@@ -105,7 +112,7 @@ neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": False, "gpu": False}
+run_or_not = {"cpu": True, "mkl": True, "gpu": True}
 
 cleanup_backend()
 
@@ -160,7 +167,7 @@ for b in neon_backends:
 
         # Callbacks: validate on validation set
         callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file=root+"/saved_data/callback_data_neon_{}.h5".format(b))
-        callbacks.add_callback(SelfCallback(train_set=neon_train_set, eval_set=neon_valid_set, epoch_freq=1))
+        callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
 
         # Fit
         start = time.time()
@@ -200,4 +207,3 @@ for b in neon_backends:
 
         cleanup_backend()
         mlp = None
-        print("\n")

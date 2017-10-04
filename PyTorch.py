@@ -15,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 10
+epoch_num = 50
 batch_size = 128
 
 import torch
@@ -85,9 +85,9 @@ def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch 
     torch_model.train() # Set the model to training mode
     for batch_idx, (data, target) in enumerate(train_set):
         batch_count += 1
+        start = default_timer()
         if gpu:
             data, target = data.cuda(), target.cuda()
-        start = default_timer()
         data, target = Variable(data), Variable(target)
         optimizer.zero_grad()
         output = torch_model(data)
@@ -96,14 +96,13 @@ def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch 
         train_loss.backward()
         optimizer.step()
 
-        # Save batch time
-        train_batch_time = default_timer() - start
-        f['.']['time']['train_batch'][batch_count-1] = train_batch_time
-
         # Get the accuracy of this batch
         pred = output.data.max(1, keepdim=True)[1]
         correct = pred.eq(target.data.view_as(pred)).cpu().sum()
         acc = 100. * correct / len(data)
+
+        # Save batch time
+        f['.']['time']['train_batch'][batch_count-1] = default_timer() - start
 
         # Save training loss and accuracy
         f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])

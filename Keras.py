@@ -15,7 +15,7 @@ resize_size = (49, 49)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 1
+epoch_num = 50
 batch_size = 128
 
 from keras.layers import Conv2D as keras_Conv
@@ -55,7 +55,7 @@ class LossHistory(keras_callback):
         try:
             print(logs)
             self.f['.']['cost']['loss'][epoch] = np.float32(logs.get('val_loss'))
-            self.f['.']['accuracy']['valid'][epoch] = np.float32(logs.get('val_acc'))
+            self.f['.']['accuracy']['valid'][epoch] = np.float32(logs.get('val_acc') * 100.0)
             self.f['.']['time_markers']['minibatch'][epoch] = np.float32(self.batch_count)
         except Exception as e:
             self.f.close()
@@ -71,7 +71,7 @@ class LossHistory(keras_callback):
     def on_batch_end(self, batch, logs={}):
         try:
             self.f['.']['cost']['train'][self.batch_count] = np.float32(logs.get('loss'))
-            self.f['.']['accuracy']['train'][self.batch_count-1] = np.float32(logs.get('acc'))
+            self.f['.']['accuracy']['train'][self.batch_count-1] = np.float32(logs.get('acc') * 100.0)
             self.f['.']['time']['train_batch'][self.batch_count] = (default_timer() - self.batch_time)
             self.batch_count += 1
         except Exception as e:
@@ -96,7 +96,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = ["tensorflow"]
+backends = ["theano", "tensorflow"]
 if platform != "darwin":
     backends.append("cntk")
 
