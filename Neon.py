@@ -11,12 +11,12 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (49, 49)
+resize_size = (32, 32)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 50
-batch_size = 128
+epoch_num = 25
+batch_size = 64
 
 from neon.backends import gen_backend, cleanup_backend
 from neon.initializers import Gaussian, Constant, GlorotUniform
@@ -29,6 +29,7 @@ from neon.optimizers import GradientDescentMomentum as neon_SGD, RMSProp as neon
 from neon.callbacks.callbacks import Callbacks, Callback, LossCallback
 from neon.data.dataiterator import ArrayIterator
 from timeit import default_timer
+from neon_resnet import resnet
 
 # This callback class is actually a mix of LossCallback and MetricCallback
 class SelfCallback(LossCallback):
@@ -132,15 +133,16 @@ for b in neon_backends:
         neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
 
         # Construct CNN
-        layers = []
-        layers.append(neon_Conv((5, 5, 64), strides=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
-        layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
-    #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
-        layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
-        layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
-        layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+    #     layers = []
+    #     layers.append(neon_Conv((5, 5, 64), strides=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
+    #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
+    #     layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
+    #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
+    # #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
+    #     layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
+    #     layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
+    #     layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+        layers = resnet(8, 43) # 6*8 + 2 = 50
 
         # Initialize model object
         mlp = SelfModel(layers=layers)

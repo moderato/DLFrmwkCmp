@@ -3,6 +3,7 @@ from PIL import Image
 from six.moves import cPickle
 import csv, time, os.path
 import matplotlib.pyplot as plt
+import numpy as np
 
 # function for reading the images
 # arguments: path to the traffic sign data, for example './GTSRB/Training'
