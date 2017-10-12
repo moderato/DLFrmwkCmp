@@ -4,18 +4,19 @@ import time
 from sklearn import model_selection as ms
 from sys import platform
 import DLHelper
+from mxnet_resnet import get_symbol
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/GTSRB/try"
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (49, 49)
+resize_size = (32, 32)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 50
-batch_size = 128
+epoch_num = 25
+batch_size = 64
 
 import mxnet as mx
 import logging
@@ -71,18 +72,21 @@ mx_test_set = mx.io.NDArrayIter(mx_test_x, mx_test_y, batch_size)
 # mx_train_set.provide_label
 
 # Construct the network
-data = mx.sym.Variable('data')
-mx_conv1 = mx.sym.Convolution(data = data, name='mx_conv1', num_filter=64, kernel=(5,5), stride=(2,2))
-mx_act1 = mx.sym.Activation(data = mx_conv1, name='mx_relu1', act_type="relu")
-mx_mp1 = mx.sym.Pooling(data = mx_act1, name = 'mx_pool1', kernel=(2,2), stride=(2,2), pool_type='max')
-mx_conv2 = mx.sym.Convolution(data = mx_mp1, name='mx_conv2', num_filter=512, kernel=(3,3), stride=(1,1), pad=(1,1))
-mx_act2 = mx.sym.Activation(data = mx_conv2, name='mx_relu2', act_type="relu")
-mx_mp2 = mx.sym.Pooling(data = mx_act2, name = 'mx_pool2', kernel=(2,2), stride=(2,2), pool_type='max')
-mx_fl = mx.sym.Flatten(data = mx_mp2, name="mx_flatten")
-mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=2048)
-mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout', p=0.5)
-mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=43)
-mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
+# data = mx.sym.Variable('data')
+# mx_conv1 = mx.sym.Convolution(data = data, name='mx_conv1', num_filter=64, kernel=(5,5), stride=(2,2), pad=(1,1))
+# mx_act1 = mx.sym.Activation(data = mx_conv1, name='mx_relu1', act_type="relu")
+# mx_mp1 = mx.sym.Pooling(data = mx_act1, name = 'mx_pool1', kernel=(2,2), stride=(2,2), pool_type='max')
+# mx_conv2 = mx.sym.Convolution(data = mx_mp1, name='mx_conv2', num_filter=512, kernel=(3,3), stride=(1,1), pad=(1,1))
+# mx_act2 = mx.sym.Activation(data = mx_conv2, name='mx_relu2', act_type="relu")
+# mx_mp2 = mx.sym.Pooling(data = mx_act2, name = 'mx_pool2', kernel=(2,2), stride=(2,2), pool_type='max')
+# mx_fl = mx.sym.Flatten(data = mx_mp2, name="mx_flatten")
+# mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=2048)
+# mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout', p=0.5)
+# mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=43)
+# mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
+
+# mx_softmax = get_symbol(43, 50, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+mx_softmax = get_symbol(43, 34, "{},{},{}".format(3, resize_size[0], resize_size[1]))
 
 # Print the names of arguments in the model
 # mx_softmax.list_arguments() # Make sure the input and the output names are consistent of those in the iterator!!
@@ -105,14 +109,14 @@ for layer in mx_softmax.list_arguments():
         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
-backends = ['cpu', 'gpu']
+backends = ['gpu', 'cpu']
 for b in backends:
     print("Using {} backend".format(b))
     # create a trainable module on CPU/GPU
     mx_model =None
     if b == 'cpu':
         mx_model = mx.mod.Module(context = mx.cpu(), symbol = mx_softmax)
-    else:
+    else: # GPU
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
     max_total_batch = (len(x_train) / batch_size + 1) * epoch_num

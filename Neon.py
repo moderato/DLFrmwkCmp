@@ -113,7 +113,7 @@ neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": True, "gpu": True}
+run_or_not = {"cpu": False, "mkl": True, "gpu": True}
 
 cleanup_backend()
 
@@ -134,7 +134,7 @@ for b in neon_backends:
 
         # Construct CNN
     #     layers = []
-    #     layers.append(neon_Conv((5, 5, 64), strides=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
+    #     layers.append(neon_Conv((5, 5, 64), strides=2, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
     #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
     #     layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
     #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
@@ -142,7 +142,9 @@ for b in neon_backends:
     #     layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
     #     layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
     #     layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
-        layers = resnet(8, 43) # 6*8 + 2 = 50
+        
+        # layers = resnet(8, 43) # 6*8 + 2 = 50
+        layers = resnet(5, 43) # 6*5 + 2 = 32
 
         # Initialize model object
         mlp = SelfModel(layers=layers)

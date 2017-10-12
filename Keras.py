@@ -5,18 +5,19 @@ from sklearn import model_selection as ms
 from sys import platform
 import DLHelper
 from timeit import default_timer
+from keras_resnet import ResnetBuilder
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/GTSRB/try"
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (49, 49)
+resize_size = (32, 32)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 50
-batch_size = 128
+epoch_num = 25
+batch_size = 64
 
 from keras.layers import Conv2D as keras_Conv
 from keras.layers import MaxPooling2D as keras_MaxPooling, GlobalAveragePooling2D as keras_AveragePooling
@@ -97,8 +98,8 @@ def set_keras_backend(backend):
 
 from sys import platform
 backends = ["theano", "tensorflow"]
-if platform != "darwin":
-    backends.append("cntk")
+# if platform != "darwin":
+#     backends.append("cntk")
 
 for b in backends:
     set_keras_backend(b)
@@ -117,17 +118,20 @@ for b in backends:
     # Build model
     layer_name_prefix = b+"_"
 
-    keras_model = Sequential()
-    keras_model.add(keras_Conv(64, (5, 5), strides=(2, 2), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
-    keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
-    keras_model.add(keras_Conv(256, (3, 3), strides=(1, 1), padding="same", activation="relu", name=layer_name_prefix+"conv2"))
-    keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
-    # keras_model.add(keras_AveragePooling(name=layer_name_prefix+"global_pool"))
-    keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
-    keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
-    keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"drop_out"))
-    keras_model.add(Dense(43, activation="softmax", name=layer_name_prefix+"fc2"))
-    keras_model.summary()
+    # keras_model = Sequential()
+    # keras_model.add(keras_Conv(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
+    # keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+    # keras_model.add(keras_Conv(256, (3, 3), strides=(1, 1), padding="same", activation="relu", name=layer_name_prefix+"conv2"))
+    # keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
+    # # keras_model.add(keras_AveragePooling(name=layer_name_prefix+"global_pool"))
+    # keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
+    # keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
+    # keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"drop_out"))
+    # keras_model.add(Dense(43, activation="softmax", name=layer_name_prefix+"fc2"))
+    # keras_model.summary()
+
+    keras_model = ResnetBuilder.build_resnet_50((3, resize_size[0], resize_size[1]), 43)
+    keras_model = ResnetBuilder.build_resnet_34((3, resize_size[0], resize_size[1]), 43)
 
     keras_optimizer = keras_SGD(lr=0.01, decay=1.6e-8, momentum=0.9) # Equivalent to decay rate 0.2 per epoch? Need to re-verify
 #     keras_optimizer = keras_RMSProp(lr=0.01, decay=0.95)
