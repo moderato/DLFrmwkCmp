@@ -11,7 +11,7 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (32, 32)
+resize_size = (47, 47)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
@@ -19,13 +19,32 @@ epoch_num = 25
 batch_size = 64
 
 from neon.backends import gen_backend, cleanup_backend
-from neon.initializers import Gaussian, Constant, GlorotUniform
+from neon.initializers import (
+    Gaussian, 
+    Constant, 
+    GlorotUniform
+)
 from neon.layers import GeneralizedCost, Affine
 from neon.backends.backend import Block
-from neon.layers import Conv as neon_Conv, Dropout as neon_Dropout, Pooling as neon_Pooling
-from neon.transforms import Rectlin, Softmax, CrossEntropyMulti, Misclassification, TopKMisclassification, Accuracy
+from neon.layers import (
+    Conv as neon_Conv, 
+    Dropout as neon_Dropout, 
+    Pooling as neon_Pooling
+)
+from neon.transforms import (
+    Rectlin, 
+    Softmax, 
+    CrossEntropyMulti, 
+    Misclassification, 
+    TopKMisclassification, 
+    Accuracy
+)
 from neon.models import Model
-from neon.optimizers import GradientDescentMomentum as neon_SGD, RMSProp as neon_RMSProp, ExpSchedule
+from neon.optimizers import (
+    GradientDescentMomentum as neon_SGD, 
+    RMSProp as neon_RMSProp, 
+    ExpSchedule
+)
 from neon.callbacks.callbacks import Callbacks, Callback, LossCallback
 from neon.data.dataiterator import ArrayIterator
 from timeit import default_timer
@@ -108,12 +127,30 @@ class SelfModel(Model):
         # across all the minibatches we trained on
         self.total_cost[:] = self.total_cost / dataset.nbatches
 
+def constructCNN(cnn_type="self"):
+    if cnn_type == "self":
+        layers = []
+        layers.append(neon_Conv((5, 5, 64), strides=2, padding=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
+        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
+        layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
+        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
+    #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
+        layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
+        layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
+        layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+    elif cnn_type == "resnet-50":
+        layers = resnet(8, 43) # 6*8 + 2 = 50
+    elif cnn_type == "resnet-32":
+        layers = resnet(5, 43) # 6*5 + 2 = 32
+
+    return layers
+
 mlp = None
 neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": False, "mkl": True, "gpu": True}
+run_or_not = {"cpu": True, "mkl": True, "gpu": True}
 
 cleanup_backend()
 
@@ -132,29 +169,15 @@ for b in neon_backends:
         neon_valid_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_valid]), y=np.asarray(neon_y_valid), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
         neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
 
-        # Construct CNN
-    #     layers = []
-    #     layers.append(neon_Conv((5, 5, 64), strides=2, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
-    #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
-    #     layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
-    #     layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
-    # #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
-    #     layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
-    #     layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
-    #     layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
-        
-        # layers = resnet(8, 43) # 6*8 + 2 = 50
-        layers = resnet(5, 43) # 6*5 + 2 = 32
-
         # Initialize model object
-        mlp = SelfModel(layers=layers)
+        mlp = SelfModel(layers=constructCNN("self"))
 
         # Costs
         neon_cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
         # Model summary
         mlp.initialize(neon_train_set, neon_cost)
-        #     print(mlp)
+        print(mlp)
 
         # Learning rules
 

@@ -11,13 +11,13 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 
-data_path = root + "/saved_data/resnet-50"
+data_path = root + "/saved_data/small"
 
-# gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
-# cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
+gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
+cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
 
-gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
-cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
+# gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
+# cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(1,1,1)
@@ -88,7 +88,7 @@ for i in range(len(gpu_backends)):
     ax1.plot(train_cost_batch['{}_t'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], \
              	train_cost_batch['{}_loss'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], marker=markers[i])
     ax1.legend(loc='best')
-    ax1.set_ylim((-0.1,9.5))
+    ax1.set_ylim((-0.1,6.5))
     
     ax2[int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
              train_cost_batch['{}_loss'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], label='{}_t'.format(b), marker=markers[0])
@@ -153,7 +153,7 @@ for i in range(len(cpu_backends)):
     ax3.plot(train_cost_batch['{}_t'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], \
                 train_cost_batch['{}_loss'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], marker=markers[i])
     ax3.legend(loc='best')
-    ax3.set_ylim((-0.1,9.5))
+    ax3.set_ylim((-0.1,6.5))
     
     ax4[int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
              train_cost_batch['{}_loss'.format(b)].iloc[train_epoch_mark['{}_mark'.format(b)]], label='{}_t'.format(b), marker=markers[0])

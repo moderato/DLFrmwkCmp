@@ -54,8 +54,8 @@ def getImageSets(root, resize_size):
     test_dir = root + "/Final_Test/Images"
 
     ## If pickle file exists, read the file
-    if os.path.isfile(root + "/processed_images.pkl"):
-        f = open(root + "/processed_images.pkl", 'rb')
+    if os.path.isfile(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1])):
+        f = open(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1]), 'rb')
         trainImages = cPickle.load(f, encoding="latin1")
         trainLabels = cPickle.load(f, encoding="latin1")
         testImages = cPickle.load(f, encoding="latin1")
@@ -71,7 +71,7 @@ def getImageSets(root, resize_size):
         testImages, testLabels = readTrafficSigns(test_dir, resize_size, False)
         print("Testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
         
-        f = open(root + "/processed_images.pkl", 'wb')
+        f = open(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1]), 'wb')
 
         for obj in [trainImages, trainLabels, testImages, testLabels]:
             cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
