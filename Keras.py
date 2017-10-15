@@ -12,7 +12,7 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (47, 47)
+resize_size = (48, 48)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
@@ -96,9 +96,18 @@ class LossHistory(keras_callback):
             raise e
 
 def constructCNN(layer_name_prefix, cnn_type="self"):
-    keras_model = None
-    if cnn_type == "self":
-        keras_model = Sequential()
+    keras_model = Sequential()
+    if cnn_type == "lugano":
+        keras_model.add(keras_Conv(100, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
+        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+        keras_model.add(keras_Conv(150, (4, 4), strides=(1, 1), activation="relu", name=layer_name_prefix+"conv2"))
+        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
+        keras_model.add(keras_Conv(250, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv3"))
+        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool3"))
+        keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
+        keras_model.add(Dense(200, activation="relu", name=layer_name_prefix+"fc1"))
+        keras_model.add(Dense(43, activation="softmax", name=layer_name_prefix+"fc2"))
+    elif cnn_type == "self":
         keras_model.add(keras_Conv(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
         keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
         keras_model.add(keras_Conv(256, (3, 3), strides=(1, 1), padding="same", activation="relu", name=layer_name_prefix+"conv2"))
@@ -145,7 +154,7 @@ for b in backends:
     # Build model
     layer_name_prefix = b+"_"
 
-    keras_model = constructCNN(layer_name_prefix, "self")
+    keras_model = constructCNN(layer_name_prefix, "lugano")
 
     keras_model.summary()
 

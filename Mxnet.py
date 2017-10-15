@@ -11,7 +11,7 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (47, 47)
+resize_size = (48, 48)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
@@ -55,7 +55,22 @@ class MxBatchCallback(object):
 
 def constructCNN(cnn_type='self'):
     mx_softmax = None
-    if cnn_type == 'self':
+    if cnn_type == 'lugano':
+        data = mx.sym.Variable('data')
+        mx_conv1 = mx.sym.Convolution(data = data, name='mx_conv1', num_filter=100, kernel=(3,3), stride=(1,1))
+        mx_act1 = mx.sym.Activation(data = mx_conv1, name='mx_relu1', act_type="relu")
+        mx_mp1 = mx.sym.Pooling(data = mx_act1, name = 'mx_pool1', kernel=(2,2), stride=(2,2), pool_type='max')
+        mx_conv2 = mx.sym.Convolution(data = mx_mp1, name='mx_conv2', num_filter=150, kernel=(4,4), stride=(1,1))
+        mx_act2 = mx.sym.Activation(data = mx_conv2, name='mx_relu2', act_type="relu")
+        mx_mp2 = mx.sym.Pooling(data = mx_act2, name = 'mx_pool2', kernel=(2,2), stride=(2,2), pool_type='max')
+        mx_conv3 = mx.sym.Convolution(data = mx_mp2, name='mx_conv3', num_filter=250, kernel=(3,3), stride=(1,1))
+        mx_act3 = mx.sym.Activation(data = mx_conv3, name='mx_relu3', act_type="relu")
+        mx_mp3 = mx.sym.Pooling(data = mx_act3, name = 'mx_pool3', kernel=(2,2), stride=(2,2), pool_type='max')
+        mx_fl = mx.sym.Flatten(data = mx_mp3, name="mx_flatten")
+        mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=200)
+        mx_fc2 = mx.sym.FullyConnected(data = mx_fc1, name='mx_fc2', num_hidden=43)
+        mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
+    elif cnn_type == 'self':
         data = mx.sym.Variable('data')
         mx_conv1 = mx.sym.Convolution(data = data, name='mx_conv1', num_filter=64, kernel=(5,5), stride=(2,2), pad=(2,2))
         mx_act1 = mx.sym.Activation(data = mx_conv1, name='mx_relu1', act_type="relu")
@@ -92,7 +107,7 @@ mx_test_set = mx.io.NDArrayIter(mx_test_x, mx_test_y, batch_size)
 # Print the shape and type of training set lapel
 # mx_train_set.provide_label
 
-mx_softmax = constructCNN("self")
+mx_softmax = constructCNN("lugano")
 
 # Print the names of arguments in the model
 # mx_softmax.list_arguments() # Make sure the input and the output names are consistent of those in the iterator!!

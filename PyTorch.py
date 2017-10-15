@@ -12,7 +12,7 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
-resize_size = (47, 47)
+resize_size = (48, 48)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
@@ -30,6 +30,47 @@ from torch.autograd import Variable
 class Flatten(torch.nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
+
+class LuganoNet(torch.nn.Module):
+    def __init__(self):
+        super(LuganoNet, self).__init__()
+
+        # Build model
+        self.conv = torch.nn.Sequential()
+        self.conv.add_module("torch_conv1", torch.nn.Conv2d(3, 100, kernel_size=(3, 3), stride=1))
+        self.conv.add_module("torch_pool1", torch.nn.MaxPool2d(kernel_size=2))
+        self.conv.add_module("torch_relu1", torch.nn.ReLU())
+        self.conv.add_module("torch_conv2", torch.nn.Conv2d(100, 150, kernel_size=(4, 4), stride=1))
+        self.conv.add_module("torch_pool2", torch.nn.MaxPool2d(kernel_size=2))
+        self.conv.add_module("torch_relu2", torch.nn.ReLU())
+        self.conv.add_module("torch_conv3", torch.nn.Conv2d(150, 250, kernel_size=(3, 3), stride=1))
+        self.conv.add_module("torch_pool3", torch.nn.MaxPool2d(kernel_size=2))
+        self.conv.add_module("torch_relu3", torch.nn.ReLU())
+        # self.conv.add_module("torch_global_pool", torch.nn.AvgPool2d(kernel_size=5))
+        self.conv.add_module("torch_flatten", Flatten())
+
+        
+        self.csf = torch.nn.Sequential()
+        self.csf.add_module("torch_fc1", torch.nn.Linear(250*4*4, 200))
+        self.csf.add_module("torch_relu3", torch.nn.ReLU())
+        self.csf.add_module("torch_fc2", torch.nn.Linear(200, 43))
+        
+        # Initialize conv layers and fc layers
+        torch_init.normal(self.conv.state_dict()["torch_conv1.weight"], mean=0, std=0.01)
+        torch_init.constant(self.conv.state_dict()["torch_conv1.bias"], 0.0)
+        torch_init.normal(self.conv.state_dict()["torch_conv2.weight"], mean=0, std=0.01)
+        torch_init.constant(self.conv.state_dict()["torch_conv2.bias"], 0.0)
+        torch_init.normal(self.conv.state_dict()["torch_conv3.weight"], mean=0, std=0.01)
+        torch_init.constant(self.conv.state_dict()["torch_conv3.bias"], 0.0)
+        torch_init.normal(self.csf.state_dict()["torch_fc1.weight"], mean=0, std=0.01)
+        torch_init.constant(self.csf.state_dict()["torch_fc1.bias"], 0.0)
+        torch_init.normal(self.csf.state_dict()["torch_fc2.weight"], mean=0, std=0.01)
+        torch_init.constant(self.csf.state_dict()["torch_fc2.bias"], 0.0)
+
+    def forward(self, x):
+        x = self.conv.forward(x)
+        x = x.view(-1, 250*4*4)
+        return self.csf.forward(x)
 
 class ConvNet(torch.nn.Module):
     def __init__(self):
@@ -70,7 +111,10 @@ class ConvNet(torch.nn.Module):
 
 def constructCNN(cnn_type='self'):
     torch_model_cpu, torch_model_gpu = None, None
-    if cnn_type == "self":
+    if cnn_type == "lugano":
+        torch_model_cpu = LuganoNet()
+        torch_model_gpu = LuganoNet().cuda()
+    elif cnn_type == "self":
         torch_model_cpu = ConvNet()
         torch_model_gpu = ConvNet().cuda()
     elif cnn_type == 'resnet-50':
@@ -96,7 +140,7 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model_cpu, torch_model_gpu = constructCNN('self')
+torch_model_cpu, torch_model_gpu = constructCNN('lugano')
 max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
 print(torch_model_gpu)
 

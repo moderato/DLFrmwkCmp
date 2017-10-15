@@ -4,27 +4,27 @@ import matplotlib.pyplot as plt
 import h5py
 from sys import platform
 # %matplotlib inline
-matplotlib.rcParams['figure.figsize'] = (15,12)
+matplotlib.rcParams['figure.figsize'] = (10,8)
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/GTSRB/try"
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 
-data_path = root + "/saved_data/resnet-50"
+data_path = root + "/saved_data/self"
 
-# gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
-# cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
+gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
+cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
 
-gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
-cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
+# gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
+# cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
 
 figs = [None] * 10
 axes = [None] * 10
 
 for i in range(0,2):
     b = 'GPU' if i == 0 else 'CPU'
-    subplots_num = (2, 3) if b == 'GPU' else (2, 3)
+    subplots_num = (2, 3) if b == 'GPU' else (3, 3)
     figs[i*5+0] = plt.figure()
     axes[i*5+0] = figs[i*5+0].add_subplot(1,1,1)
     figs[i*5+0].suptitle("Training loss versus time ({})".format(b), y=0.94)
