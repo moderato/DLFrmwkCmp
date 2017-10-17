@@ -55,7 +55,7 @@ class MxBatchCallback(object):
 
 def constructCNN(cnn_type='self'):
     mx_softmax = None
-    if cnn_type == 'lugano':
+    if cnn_type == 'idsia':
         data = mx.sym.Variable('data')
         mx_conv1 = mx.sym.Convolution(data = data, name='mx_conv1', num_filter=100, kernel=(3,3), stride=(1,1))
         mx_act1 = mx.sym.Activation(data = mx_conv1, name='mx_relu1', act_type="relu")
@@ -107,7 +107,7 @@ mx_test_set = mx.io.NDArrayIter(mx_test_x, mx_test_y, batch_size)
 # Print the shape and type of training set lapel
 # mx_train_set.provide_label
 
-mx_softmax = constructCNN("lugano")
+mx_softmax = constructCNN("idsia")
 
 # Print the names of arguments in the model
 # mx_softmax.list_arguments() # Make sure the input and the output names are consistent of those in the iterator!!

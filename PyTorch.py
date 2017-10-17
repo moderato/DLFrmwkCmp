@@ -111,7 +111,7 @@ class ConvNet(torch.nn.Module):
 
 def constructCNN(cnn_type='self'):
     torch_model_cpu, torch_model_gpu = None, None
-    if cnn_type == "lugano":
+    if cnn_type == "idsia":
         torch_model_cpu = LuganoNet()
         torch_model_gpu = LuganoNet().cuda()
     elif cnn_type == "self":
@@ -140,7 +140,7 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model_cpu, torch_model_gpu = constructCNN('lugano')
+torch_model_cpu, torch_model_gpu = constructCNN('idsia')
 max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
 print(torch_model_gpu)
 

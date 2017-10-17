@@ -129,7 +129,7 @@ class SelfModel(Model):
 
 def constructCNN(cnn_type="self"):
     layers = []
-    if cnn_type == "lugano":
+    if cnn_type == "idsia":
         layers.append(neon_Conv((3, 3, 100), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
         layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
         layers.append(neon_Conv((4, 4, 150), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
@@ -159,7 +159,7 @@ neon_backends = ["cpu", "mkl", "gpu"]
 neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": True, "gpu": True}
+run_or_not = {"cpu": True, "mkl": False, "gpu": False}
 
 cleanup_backend()
 
@@ -179,7 +179,7 @@ for b in neon_backends:
         neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
 
         # Initialize model object
-        mlp = SelfModel(layers=constructCNN("lugano"))
+        mlp = SelfModel(layers=constructCNN("idsia"))
 
         # Costs
         neon_cost = GeneralizedCost(costfunc=CrossEntropyMulti())

@@ -97,7 +97,7 @@ class LossHistory(keras_callback):
 
 def constructCNN(layer_name_prefix, cnn_type="self"):
     keras_model = Sequential()
-    if cnn_type == "lugano":
+    if cnn_type == "idsia":
         keras_model.add(keras_Conv(100, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
         keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
         keras_model.add(keras_Conv(150, (4, 4), strides=(1, 1), activation="relu", name=layer_name_prefix+"conv2"))
@@ -133,7 +133,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = ["theano", "tensorflow"]
+backends = ["theano"]
 # if platform != "darwin":
 #     backends.append("cntk")
 
@@ -154,7 +154,7 @@ for b in backends:
     # Build model
     layer_name_prefix = b+"_"
 
-    keras_model = constructCNN(layer_name_prefix, "lugano")
+    keras_model = constructCNN(layer_name_prefix, "idsia")
 
     keras_model.summary()
 
