@@ -1,14 +1,40 @@
-import h5py
-from PIL import Image
+import h5py, cv2
 from six.moves import cPickle
 import csv, time, os.path
 import matplotlib.pyplot as plt
 import numpy as np
 
+# function to process a single image
+def processImage(prefix, size, gtReader, proc_type=None):
+    images = []
+    labels = []
+
+    for row in gtReader:
+        image = cv2.imread(prefix + row[0])
+
+        if proc_type is None:
+            image = image[...,::-1] # BGR to RGB
+            image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
+            image = cv2.resize(image, size) # Resize images            
+        else:
+            lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) # BGR to Lab space
+            tmp = np.zeros((lab.shape[0],lab.shape[1]), dtype=lab.dtype)
+            tmp[:,:] = lab[:,:,0] # Get the light channel of LAB space
+            clahe = cv2.createCLAHE(clipLimit=2,tileGridSize=(4,4)) # Create CLAHE object
+            light = clahe.apply(tmp) # Apply to the light channel
+            lab[:,:,0] = light # Merge back
+            image = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB) # LAB to RGB
+            image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
+            image = cv2.resize(image, size) # Resize images    
+        images.append(image) # Already uint8
+        labels.append(int(row[7])) # the 8th column is the label
+
+    return images, labels
+
 # function for reading the images
 # arguments: path to the traffic sign data, for example './GTSRB/Training'
 # returns: list of images, list of corresponding labels 
-def readTrafficSigns(rootpath, size, training=True):
+def readTrafficSigns(rootpath, size, process=None, training=True):
     '''Reads traffic sign data for German Traffic Sign Recognition Benchmark.
 
     Arguments: path to the traffic sign data, for example './GTSRB/Training'
@@ -23,39 +49,29 @@ def readTrafficSigns(rootpath, size, training=True):
             gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
             next(gtReader) # skip header
             # loop over all images in current annotations file
-            for row in gtReader:
-#                 image = Image.open(prefix + row[0]).convert('L') # Load an image and convert to grayscale
-                image = Image.open(prefix + row[0])
-                box = (int(row[3]), int(row[4]), int(row[5]), int(row[6])) # Specify ROI box
-                image = image.crop(box) # Crop the ROI
-                image = image.resize(size) # Resize images
-                images.append(np.asarray(image).astype('uint8')) # the 1th column is the filename, while 3,4,5,6 are the vertices of ROI
-                labels.append(int(row[7])) # the 8th column is the label
+            imgs, lbls = processImage(prefix, size, gtReader, process)
+            images = images + imgs
+            labels = labels + lbls
             gtFile.close()
     else:
         gtFile = open(rootpath + "/../../GT-final_test.csv") # annotations file
         gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
         next(gtReader) # skip header
         # loop over all images in current annotations file
-        for row in gtReader:
-#             image = Image.open(rootpath + '/' + row[0]).convert('L') # Load an image and convert to grayscale
-            image = Image.open(rootpath + '/' + row[0]) # Color version
-            box = (int(row[3]), int(row[4]), int(row[5]), int(row[6])) # Specify ROI box
-            image = image.crop(box) # Crop the ROI
-            image = image.resize(size) # Resize images
-            images.append(np.asarray(image).astype('uint8')) # the 1th column is the filename, while 3,4,5,6 are the vertices of ROI
-            labels.append(int(row[7])) # the 8th column is the label
+        imgs, lbls = processImage(rootpath + '/', size, gtReader, process)
+        images = images + imgs
+        labels = labels + lbls
         gtFile.close()
-        
+
     return images, labels
 
-def getImageSets(root, resize_size):
+def getImageSets(root, resize_size, process=None, printing=True):
     train_dir = root + "/Final_Training/Images"
     test_dir = root + "/Final_Test/Images"
 
     ## If pickle file exists, read the file
-    if os.path.isfile(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1])):
-        f = open(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1]), 'rb')
+    if os.path.isfile(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original"))):
+        f = open(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original")), 'rb')
         trainImages = cPickle.load(f, encoding="latin1")
         trainLabels = cPickle.load(f, encoding="latin1")
         testImages = cPickle.load(f, encoding="latin1")
@@ -64,26 +80,27 @@ def getImageSets(root, resize_size):
     ## Else, read images and write to the pickle file
     else:
         start = time.time()
-        trainImages, trainLabels = readTrafficSigns(train_dir, resize_size)
+        trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, process, True)
         print("Training Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
 
         start = time.time()
-        testImages, testLabels = readTrafficSigns(test_dir, resize_size, False)
+        testImages, testLabels = readTrafficSigns(test_dir, resize_size, process, False)
         print("Testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
         
-        f = open(root + "/processed_images_{}_{}.pkl".format(resize_size[0], resize_size[1]), 'wb')
+        f = open(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original")), 'wb')
 
         for obj in [trainImages, trainLabels, testImages, testLabels]:
             cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
         f.close()
 
-    print(trainImages[42].shape)
-    # plt.imshow(trainImages[42])
-    # plt.show()
+    if printing:
+        print(trainImages[42].shape)
+        plt.imshow(trainImages[42])
+        plt.show()
 
-    print(testImages[21].shape)
-    # plt.imshow(trainImages[21])
-    # plt.show()
+        print(testImages[21].shape)
+        plt.imshow(trainImages[21])
+        plt.show()
 
     return trainImages, trainLabels, testImages, testLabels
 
