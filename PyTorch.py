@@ -16,7 +16,7 @@ resize_size = (48, 48)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 25
+epoch_num = 1
 batch_size = 64
 
 import torch

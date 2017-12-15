@@ -13,7 +13,7 @@ else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 print(root)
 resize_size = (48, 48)
-trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
+trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 1
@@ -163,9 +163,9 @@ for b in backends:
     keras_cost = "categorical_crossentropy"
     keras_model.compile(loss=keras_cost, optimizer=keras_optimizer, metrics=["acc"])
 
-    checkpointer = ModelCheckpoint(filepath=root+"/saved_models/keras_"+b+"_weights.hdf5",
+    checkpointer = ModelCheckpoint(filepath="./saved_models/keras_"+b+"_weights.hdf5",
                                        verbose=1, save_best_only=True)
-    losses = LossHistory(root+"/saved_data/callback_data_keras_{}.h5".format(b), epoch_num, max_total_batch)
+    losses = LossHistory("./saved_data/callback_data_keras_{}.h5".format(b), epoch_num, max_total_batch)
 
     start = time.time()
     keras_model.fit(keras_train_x, keras_train_y,
@@ -173,7 +173,7 @@ for b in backends:
                   epochs=epoch_num, batch_size=batch_size, callbacks=[checkpointer, losses], verbose=1, shuffle=True)
     print("{} training finishes in {:.2f} seconds.".format(b, time.time() - start))
 
-    keras_model.load_weights(root+"/saved_models/keras_"+b+"_weights.hdf5")
+    keras_model.load_weights("./saved_models/keras_"+b+"_weights.hdf5")
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
@@ -183,6 +183,6 @@ for b in backends:
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
 
     json_string = keras_model.to_json()
-    js = open("root+/saved_models/keras_"+b+"_config.json", "w")
+    js = open("./saved_models/keras_"+b+"_config.json", "a")
     js.write(json_string)
     js.close()
