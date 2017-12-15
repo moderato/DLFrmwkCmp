@@ -16,7 +16,7 @@ resize_size = (48, 48)
 trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 25
+epoch_num = 1
 batch_size = 64
 
 from keras.layers import Conv2D as keras_Conv
@@ -38,6 +38,7 @@ from keras.optimizers import SGD as keras_SGD, RMSprop as keras_RMSProp
 from keras.callbacks import ModelCheckpoint, Callback as keras_callback
 from sklearn import model_selection as ms
 from keras.layers.convolutional import ZeroPadding2D
+from keras.models import model_from_json
 import os, h5py
 from timeit import default_timer
 
@@ -133,7 +134,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = ["theano"]
+backends = ["tensorflow"]
 # if platform != "darwin":
 #     backends.append("cntk")
 
@@ -180,3 +181,8 @@ for b in backends:
     losses.f['.']['infer_acc']['accuracy'][0] = np.float32(keras_test_accuracy)
     losses.f.close()
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
+
+    json_string = keras_model.to_json()
+    js = open("root+/saved_models/keras_"+b+"_config.json", "w")
+    js.write(json_string)
+    js.close()
