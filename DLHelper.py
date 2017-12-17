@@ -11,21 +11,29 @@ def processImage(prefix, size, gtReader, proc_type=None):
 
     for row in gtReader:
         image = cv2.imread(prefix + row[0])
-
+        image = image[...,::-1] # BGR to RGB
+        image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
+        image = cv2.resize(image, size) # Resize images 
         if proc_type is None:
-            image = image[...,::-1] # BGR to RGB
-            image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
-            image = cv2.resize(image, size) # Resize images            
-        else:
-            lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) # BGR to Lab space
+            pass
+        elif proc_type == "CLAHE" or proc_type == "clahe":
+            lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB) # BGR to Lab space
             tmp = np.zeros((lab.shape[0],lab.shape[1]), dtype=lab.dtype)
             tmp[:,:] = lab[:,:,0] # Get the light channel of LAB space
             clahe = cv2.createCLAHE(clipLimit=2,tileGridSize=(4,4)) # Create CLAHE object
             light = clahe.apply(tmp) # Apply to the light channel
             lab[:,:,0] = light # Merge back
             image = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB) # LAB to RGB
-            image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
-            image = cv2.resize(image, size) # Resize images    
+        elif proc_type == "1sigma" or proc_type == "2sigma":
+            R, G, B = image[:,:,0], image[:,:,1], image[:,:,2] # RGB channels
+            if proc_type == "1sigma":
+                param = 1
+            else: # "2sigma"
+                param = 2
+            image[:,:,0] = cv2.normalize(R, None, R.mean() - param * R.std(), R.mean() + param * R.std(), cv2.NORM_MINMAX)
+            image[:,:,1] = cv2.normalize(G, None, G.mean() - param * G.std(), G.mean() + param * G.std(), cv2.NORM_MINMAX)
+            image[:,:,2] = cv2.normalize(B, None, B.mean() - param * B.std(), B.mean() + param * B.std(), cv2.NORM_MINMAX)
+
         images.append(image) # Already uint8
         labels.append(int(row[7])) # the 8th column is the label
 
