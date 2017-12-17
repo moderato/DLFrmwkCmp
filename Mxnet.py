@@ -7,15 +7,18 @@ import DLHelper
 from mxnet_resnet import get_symbol
 
 if platform == "darwin":
-    root = "/Users/moderato/Downloads/GTSRB/try"
+    root = "/Users/moderato/Downloads/"
 else:
-    root = "/home/zhongyilin/Desktop/GTSRB/try"
+    root = "/home/zhongyilin/Desktop/"
 print(root)
+
 resize_size = (48, 48)
-trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
+dataset = "Belgium"
+
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 25
+epoch_num = 1
 batch_size = 64
 
 import mxnet as mx
@@ -68,7 +71,7 @@ def constructCNN(cnn_type='self'):
         mx_mp3 = mx.sym.Pooling(data = mx_act3, name = 'mx_pool3', kernel=(2,2), stride=(2,2), pool_type='max')
         mx_fl = mx.sym.Flatten(data = mx_mp3, name="mx_flatten")
         mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=200)
-        mx_fc2 = mx.sym.FullyConnected(data = mx_fc1, name='mx_fc2', num_hidden=43)
+        mx_fc2 = mx.sym.FullyConnected(data = mx_fc1, name='mx_fc2', num_hidden=class_num)
         mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
     elif cnn_type == 'self':
         data = mx.sym.Variable('data')
@@ -81,12 +84,12 @@ def constructCNN(cnn_type='self'):
         mx_fl = mx.sym.Flatten(data = mx_mp2, name="mx_flatten")
         mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=2048)
         mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout', p=0.5)
-        mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=43)
+        mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=class_num)
         mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
     elif cnn_type == 'resnet-50':
-        mx_softmax = get_symbol(43, 50, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+        mx_softmax = get_symbol(class_num, 50, "{},{},{}".format(3, resize_size[0], resize_size[1]))
     elif cnn_type == 'resnet-34':
-        mx_softmax = get_symbol(43, 34, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+        mx_softmax = get_symbol(class_num, 34, "{},{},{}".format(3, resize_size[0], resize_size[1]))
 
     return mx_softmax
 
@@ -130,7 +133,7 @@ for layer in mx_softmax.list_arguments():
         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
-backends = ['cpu', 'gpu']
+backends = ['cpu']
 for b in backends:
     print("Using {} backend".format(b))
     # create a trainable module on CPU/GPU
@@ -141,7 +144,7 @@ for b in backends:
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
     max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
-    filename = root + "/saved_data/callback_data_mxnet_{}.h5".format(b)
+    filename = "{}/saved_data/callback_data_mxnet_{}.h5".format(root, b)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
     try:
@@ -210,6 +213,8 @@ for b in backends:
         score = mx_model.score(mx_test_set, ['acc'])
         f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1] * 100.0)
         print("Accuracy score is %f" % (score[0][1]))
+
+        mx_model.save_params("{}/saved_model/mxnet_{}_{}.params".format(root, b, dataset))
         
     except KeyboardInterrupt:
         pass

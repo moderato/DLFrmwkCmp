@@ -34,7 +34,7 @@ def processImage(prefix, size, gtReader, proc_type=None):
 # function for reading the images
 # arguments: path to the traffic sign data, for example './GTSRB/Training'
 # returns: list of images, list of corresponding labels 
-def readTrafficSigns(rootpath, size, process=None, training=True):
+def readTrafficSigns_GT(rootpath, size, process=None, training=True):
     '''Reads traffic sign data for German Traffic Sign Recognition Benchmark.
 
     Arguments: path to the traffic sign data, for example './GTSRB/Training'
@@ -65,13 +65,55 @@ def readTrafficSigns(rootpath, size, process=None, training=True):
 
     return images, labels
 
-def getImageSets(root, resize_size, process=None, printing=True):
-    train_dir = root + "/Final_Training/Images"
-    test_dir = root + "/Final_Test/Images"
+def readTrafficSigns_Belgium(rootpath, size, process=None, training=True):
+    '''Reads traffic sign data for German Traffic Sign Recognition Benchmark.
+
+    Arguments: path to the traffic sign data, for example './GTSRB/Training'
+    Returns:   list of images, list of corresponding labels'''
+    images = [] # images
+    labels = [] # corresponding labels
+    # loop over all classes
+    for c in range(0,62):
+        prefix = rootpath + '/' + format(c, '05d') + '/' # subdirectory for class
+        gtFile = open(prefix + 'GT-'+ format(c, '05d') + '.csv') # annotations file
+        gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
+        next(gtReader) # skip header
+        # loop over all images in current annotations file
+        imgs, lbls = processImage(prefix, size, gtReader, process)
+        images = images + imgs
+        labels = labels + lbls
+        gtFile.close()
+
+    return images, labels
+
+def getDirFuncClassNum(root, dataset="GT"):
+    train_dir, test_dir, readTrafficSigns = None, None, None
+    class_num = -1
+    if dataset == "GT":
+        root += "/GTSRB/try"
+        train_dir = root + "/Final_Training/Images"
+        test_dir = root + "/Final_Test/Images"
+        readTrafficSigns = readTrafficSigns_GT
+        class_num = 43
+    elif dataset == "Belgium":
+        root += "/BelgiumTSC"
+        train_dir = root + "/Training"
+        test_dir = root + "/Testing"
+        readTrafficSigns = readTrafficSigns_Belgium
+        class_num = 62
+    else:
+        raise Exception("")
+
+    return root, train_dir, test_dir, readTrafficSigns, class_num
+
+
+def getImageSets(root, resize_size, dataset="GT", process=None, printing=True):
+    root, train_dir, test_dir, readTrafficSigns, class_num = getDirFuncClassNum(root, dataset)
+    trainImages, trainLabels, testImages, testLabels = None, None, None, None
 
     ## If pickle file exists, read the file
-    if os.path.isfile(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original"))):
-        f = open(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original")), 'rb')
+    if os.path.isfile(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original"))):
+        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original")), 'rb')
         trainImages = cPickle.load(f, encoding="latin1")
         trainLabels = cPickle.load(f, encoding="latin1")
         testImages = cPickle.load(f, encoding="latin1")
@@ -87,7 +129,7 @@ def getImageSets(root, resize_size, process=None, printing=True):
         testImages, testLabels = readTrafficSigns(test_dir, resize_size, process, False)
         print("Testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
         
-        f = open(root + "/processed_images_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], (process if (process is not None) else "original")), 'wb')
+        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original")), 'wb')
 
         for obj in [trainImages, trainLabels, testImages, testLabels]:
             cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
@@ -102,7 +144,7 @@ def getImageSets(root, resize_size, process=None, printing=True):
         plt.imshow(trainImages[21])
         plt.show()
 
-    return trainImages, trainLabels, testImages, testLabels
+    return root, trainImages, trainLabels, testImages, testLabels, class_num
 
 def init_h5py(filename, epoch_num, max_total_batch):
     f = h5py.File(filename, 'w')

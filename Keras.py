@@ -8,12 +8,15 @@ from timeit import default_timer
 from keras_resnet import ResnetBuilder
 
 if platform == "darwin":
-    root = "/Users/moderato/Downloads/GTSRB/try"
+    root = "/Users/moderato/Downloads/"
 else:
-    root = "/home/zhongyilin/Desktop/GTSRB/try"
+    root = "/home/zhongyilin/Desktop/"
 print(root)
+
 resize_size = (48, 48)
-trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size, printing=False)
+dataset = "Belgium"
+
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 1
@@ -107,7 +110,7 @@ def constructCNN(layer_name_prefix, cnn_type="self"):
         keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool3"))
         keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
         keras_model.add(Dense(200, activation="relu", name=layer_name_prefix+"fc1"))
-        keras_model.add(Dense(43, activation="softmax", name=layer_name_prefix+"fc2"))
+        keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
     elif cnn_type == "self":
         keras_model.add(keras_Conv(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
         keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
@@ -117,11 +120,11 @@ def constructCNN(layer_name_prefix, cnn_type="self"):
         keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
         keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
         keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"drop_out"))
-        keras_model.add(Dense(43, activation="softmax", name=layer_name_prefix+"fc2"))
+        keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
     elif cnn_type =="resnet-50":
-        keras_model = ResnetBuilder.build_resnet_50((3, resize_size[0], resize_size[1]), 43)
+        keras_model = ResnetBuilder.build_resnet_50((3, resize_size[0], resize_size[1]), class_num)
     elif cnn_type =="resnet-34":
-        keras_model = ResnetBuilder.build_resnet_34((3, resize_size[0], resize_size[1]), 43)
+        keras_model = ResnetBuilder.build_resnet_34((3, resize_size[0], resize_size[1]), class_num)
 
     return keras_model
 
@@ -138,6 +141,12 @@ backends = ["tensorflow"]
 # if platform != "darwin":
 #     backends.append("cntk")
 
+device = None
+if os.environ['CONDA_DEFAULT_ENV'] == "neon":
+    device = "gpu"
+else:
+    device = "cpu"
+
 for b in backends:
     set_keras_backend(b)
 
@@ -147,9 +156,9 @@ for b in backends:
     keras_train_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_train])
     keras_valid_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_valid])
     keras_test_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in testImages])
-    keras_train_y = to_categorical(y_train, 43)
-    keras_valid_y = to_categorical(y_valid, 43)
-    keras_test_y = to_categorical(testLabels, 43)
+    keras_train_y = to_categorical(y_train, class_num)
+    keras_valid_y = to_categorical(y_valid, class_num)
+    keras_test_y = to_categorical(testLabels, class_num)
 
     # Build model
     layer_name_prefix = b+"_"
@@ -163,9 +172,9 @@ for b in backends:
     keras_cost = "categorical_crossentropy"
     keras_model.compile(loss=keras_cost, optimizer=keras_optimizer, metrics=["acc"])
 
-    checkpointer = ModelCheckpoint(filepath="./saved_models/keras_"+b+"_weights.hdf5",
+    checkpointer = ModelCheckpoint(filepath="{}/saved_models/keras_{}_{}_{}_weights.hdf5".format(root, b, device, dataset),
                                        verbose=1, save_best_only=True)
-    losses = LossHistory("./saved_data/callback_data_keras_{}.h5".format(b), epoch_num, max_total_batch)
+    losses = LossHistory("{}/saved_data/callback_data_keras_{}_{}_{}.h5".format(root, b, device, dataset), epoch_num, max_total_batch)
 
     start = time.time()
     keras_model.fit(keras_train_x, keras_train_y,
@@ -173,7 +182,7 @@ for b in backends:
                   epochs=epoch_num, batch_size=batch_size, callbacks=[checkpointer, losses], verbose=1, shuffle=True)
     print("{} training finishes in {:.2f} seconds.".format(b, time.time() - start))
 
-    keras_model.load_weights("./saved_models/keras_"+b+"_weights.hdf5")
+    keras_model.load_weights("{}/saved_models/keras_{}_{}_{}_weights.hdf5".format(root, b, device, dataset)) # Load the best model (not necessary the latest one)
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
@@ -183,6 +192,6 @@ for b in backends:
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
 
     json_string = keras_model.to_json()
-    js = open("./saved_models/keras_"+b+"_config.json", "a")
+    js = open("{}/saved_models/keras_{}_{}_{}_config.json".format(root, b, device, dataset), "a")
     js.write(json_string)
     js.close()

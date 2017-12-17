@@ -8,12 +8,15 @@ from timeit import default_timer
 from pytorch_resnet import resnet
 
 if platform == "darwin":
-    root = "/Users/moderato/Downloads/GTSRB/try"
+    root = "/Users/moderato/Downloads/"
 else:
-    root = "/home/zhongyilin/Desktop/GTSRB/try"
+    root = "/home/zhongyilin/Desktop/"
 print(root)
+
 resize_size = (48, 48)
-trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
+dataset = "Belgium"
+
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 1
@@ -53,7 +56,7 @@ class LuganoNet(torch.nn.Module):
         self.csf = torch.nn.Sequential()
         self.csf.add_module("torch_fc1", torch.nn.Linear(250*4*4, 200))
         self.csf.add_module("torch_relu3", torch.nn.ReLU())
-        self.csf.add_module("torch_fc2", torch.nn.Linear(200, 43))
+        self.csf.add_module("torch_fc2", torch.nn.Linear(200, class_num))
         
         # Initialize conv layers and fc layers
         torch_init.normal(self.conv.state_dict()["torch_conv1.weight"], mean=0, std=0.01)
@@ -92,7 +95,7 @@ class ConvNet(torch.nn.Module):
         self.csf.add_module("torch_fc1", torch.nn.Linear(256*6*6, 2048))
         self.csf.add_module("torch_relu3", torch.nn.ReLU())
         self.csf.add_module("torch_dropout1", torch.nn.Dropout(0.5))
-        self.csf.add_module("torch_fc2", torch.nn.Linear(2048, 43))
+        self.csf.add_module("torch_fc2", torch.nn.Linear(2048, class_num))
         
         # Initialize conv layers and fc layers
         torch_init.normal(self.conv.state_dict()["torch_conv1.weight"], mean=0, std=0.01)
@@ -109,20 +112,24 @@ class ConvNet(torch.nn.Module):
         x = x.view(-1, 256*6*6)
         return self.csf.forward(x)
 
-def constructCNN(cnn_type='self'):
+def constructCNN(cnn_type='self', gpu=True):
     torch_model_cpu, torch_model_gpu = None, None
     if cnn_type == "idsia":
         torch_model_cpu = LuganoNet()
-        torch_model_gpu = LuganoNet().cuda()
+        if gpu:
+            torch_model_gpu = LuganoNet().cuda()
     elif cnn_type == "self":
         torch_model_cpu = ConvNet()
-        torch_model_gpu = ConvNet().cuda()
+        if gpu:
+            torch_model_gpu = ConvNet().cuda()
     elif cnn_type == 'resnet-50':
-        torch_model_cpu = resnet(depth=50, num_classes=43)
-        torch_model_gpu = resnet(depth=50, num_classes=43).cuda()
+        torch_model_cpu = resnet(depth=50, num_classes=class_num)
+        if gpu:
+            torch_model_gpu = resnet(depth=50, num_classes=class_num).cuda()
     elif cnn_type == 'resnet-32':
-        torch_model_cpu = resnet(depth=32, num_classes=43)
-        torch_model_gpu = resnet(depth=32, num_classes=43).cuda()
+        torch_model_cpu = resnet(depth=32, num_classes=class_num)
+        if gpu:
+            torch_model_gpu = resnet(depth=32, num_classes=class_num).cuda()
 
     return torch_model_cpu, torch_model_gpu
 
@@ -140,7 +147,7 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model_cpu, torch_model_gpu = constructCNN('idsia')
+torch_model_cpu, torch_model_gpu = constructCNN('idsia', gpu=False)
 max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
 print(torch_model_gpu)
 
@@ -217,7 +224,7 @@ def valid(torch_model, optimizer, valid_set, f, gpu = False, epoch = None):
         100. * correct / len(valid_set.dataset)))
 
 # CPU & GPU
-backends = ['gpu', 'cpu']
+backends = ['cpu']
 for b in backends:
     print("Run on {}".format(b))
     use_gpu = (b == 'gpu')
@@ -225,7 +232,7 @@ for b in backends:
     torch_model = torch_model_gpu if use_gpu else torch_model_cpu
     optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
-    filename = root + "/saved_data/callback_data_pytorch_{}.h5".format(b)
+    filename = "{}/saved_data/callback_data_pytorch_{}_{}.h5".format(root, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
         for epoch in range(epoch_num):
@@ -244,6 +251,8 @@ for b in backends:
 
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
+
+        torch.save(torch_model, "{}/saved_model/pytorch_{}_{}.pth".format(root, b, dataset))
     except KeyboardInterrupt:
         pass
     except Exception as e:
