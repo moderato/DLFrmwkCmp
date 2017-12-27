@@ -104,19 +104,19 @@ def getDirFuncClassNum(root, dataset="GT"):
     train_dir, test_dir, readTrafficSigns = None, None, None
     class_num = -1
     if dataset == "GT":
-        root += "/GTSRB/try"
-        train_dir = root + "/Final_Training/Images"
-        test_dir = root + "/Final_Test/Images"
+        root += "GTSRB/try/"
+        train_dir = root + "Final_Training/Images"
+        test_dir = root + "Final_Test/Images"
         readTrafficSigns = readTrafficSigns_GT
         class_num = 43
     elif dataset == "Belgium":
-        root += "/BelgiumTSC"
-        train_dir = root + "/Training"
-        test_dir = root + "/Testing"
+        root += "BelgiumTSC/"
+        train_dir = root + "Training"
+        test_dir = root + "Testing"
         readTrafficSigns = readTrafficSigns_Belgium
         class_num = 62
     else:
-        raise Exception("")
+        raise Exception("No such dataset.")
 
     return root, train_dir, test_dir, readTrafficSigns, class_num
 

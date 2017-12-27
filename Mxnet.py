@@ -214,7 +214,8 @@ for b in backends:
         f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1] * 100.0)
         print("Accuracy score is %f" % (score[0][1]))
 
-        mx_model.save_params("{}/saved_model/mxnet_{}_{}.params".format(root, b, dataset))
+        mx_model.save_params("{}saved_models/mxnet_{}_{}.params".format(root, b, dataset))
+        mx_model._symbol.save("{}saved_models/mxnet_{}_{}.json".format(root, b, dataset))
         
     except KeyboardInterrupt:
         pass

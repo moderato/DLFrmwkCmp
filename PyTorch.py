@@ -252,7 +252,7 @@ for b in backends:
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
 
-        torch.save(torch_model, "{}/saved_model/pytorch_{}_{}.pth".format(root, b, dataset))
+        torch.save(torch_model, "{}saved_model/pytorch_{}_{}.pth".format(root, b, dataset))
     except KeyboardInterrupt:
         pass
     except Exception as e:
