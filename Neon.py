@@ -140,7 +140,7 @@ def constructCNN(cnn_type="self"):
         layers.append(neon_Conv((3, 3, 250), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv3"))
         layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool3"))
         layers.append(Affine(nout=200, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
-        layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+        layers.append(Affine(nout=class_num, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "self":
         layers.append(neon_Conv((5, 5, 64), strides=2, padding=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
         layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
@@ -149,11 +149,11 @@ def constructCNN(cnn_type="self"):
     #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
         layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
         layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
-        layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+        layers.append(Affine(nout=class_num, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "resnet-56":
-        layers = resnet(9, 43) # 6*9 + 2 = 56
+        layers = resnet(9, class_num) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
-        layers = resnet(5, 43) # 6*5 + 2 = 32
+        layers = resnet(5, class_num) # 6*5 + 2 = 32
 
     return layers
 
@@ -177,9 +177,9 @@ for b in neon_backends:
 
         # Make iterators
         x_train, x_valid, neon_y_train, neon_y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
-        neon_train_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_train]), y=np.asarray(neon_y_train), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
-        neon_valid_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_valid]), y=np.asarray(neon_y_valid), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
-        neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=43, lshape=(3, resize_size[0], resize_size[1]))
+        neon_train_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_train]), y=np.asarray(neon_y_train), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
+        neon_valid_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_valid]), y=np.asarray(neon_y_valid), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
+        neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
 
         # Initialize model object
         mlp = SelfModel(layers=constructCNN("idsia"))
