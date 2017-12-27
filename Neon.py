@@ -7,12 +7,15 @@ import DLHelper
 from sys import platform
 
 if platform == "darwin":
-    root = "/Users/moderato/Downloads/GTSRB/try"
+    root = "/Users/moderato/Downloads/"
 else:
-    root = "/home/zhongyilin/Desktop/GTSRB/try"
+    root = "/home/zhongyilin/Desktop/"
 print(root)
+
 resize_size = (48, 48)
-trainImages, trainLabels, testImages, testLabels = DLHelper.getImageSets(root, resize_size)
+dataset = "GT"
+
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=True)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 epoch_num = 25
@@ -147,8 +150,8 @@ def constructCNN(cnn_type="self"):
         layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
         layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
         layers.append(Affine(nout=43, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
-    elif cnn_type == "resnet-50":
-        layers = resnet(8, 43) # 6*8 + 2 = 50
+    elif cnn_type == "resnet-56":
+        layers = resnet(9, 43) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
         layers = resnet(5, 43) # 6*5 + 2 = 32
 

@@ -1,3 +1,5 @@
+# Code ported from Neon official Model Zoo
+
 from neon.initializers import Kaiming, IdentityInit
 from neon.layers import Conv, Pooling, GeneralizedCost, Affine, Activation
 from neon.layers import MergeSum, SkipNode

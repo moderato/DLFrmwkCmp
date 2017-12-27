@@ -5,7 +5,7 @@ from sklearn import model_selection as ms
 from sys import platform
 import DLHelper
 from timeit import default_timer
-from keras_resnet import ResnetBuilder
+import keras_resnet
 
 if platform == "darwin":
     root = "/Users/moderato/Downloads/"
@@ -121,10 +121,10 @@ def constructCNN(layer_name_prefix, cnn_type="self"):
         keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
         keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"drop_out"))
         keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
-    elif cnn_type =="resnet-50":
-        keras_model = ResnetBuilder.build_resnet_50((3, resize_size[0], resize_size[1]), class_num)
-    elif cnn_type =="resnet-34":
-        keras_model = ResnetBuilder.build_resnet_34((3, resize_size[0], resize_size[1]), class_num)
+    elif cnn_type =="resnet-56":
+        keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)
+    elif cnn_type =="resnet-32":
+        keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 32, num_classes=class_num)
 
     return keras_model
 
@@ -163,7 +163,7 @@ for b in backends:
     # Build model
     layer_name_prefix = b+"_"
 
-    keras_model = constructCNN(layer_name_prefix, "idsia")
+    keras_model = constructCNN(layer_name_prefix, "resnet-32")
 
     keras_model.summary()
 

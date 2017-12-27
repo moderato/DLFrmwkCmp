@@ -86,10 +86,10 @@ def constructCNN(cnn_type='self'):
         mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout', p=0.5)
         mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=class_num)
         mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
-    elif cnn_type == 'resnet-50':
-        mx_softmax = get_symbol(class_num, 50, "{},{},{}".format(3, resize_size[0], resize_size[1]))
-    elif cnn_type == 'resnet-34':
-        mx_softmax = get_symbol(class_num, 34, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+    elif cnn_type == 'resnet-56':
+        mx_softmax = get_symbol(class_num, 56, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+    elif cnn_type == 'resnet-32':
+        mx_softmax = get_symbol(class_num, 32, "{},{},{}".format(3, resize_size[0], resize_size[1]))
 
     return mx_softmax
 

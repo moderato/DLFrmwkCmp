@@ -122,10 +122,10 @@ def constructCNN(cnn_type='self', gpu=True):
         torch_model_cpu = ConvNet()
         if gpu:
             torch_model_gpu = ConvNet().cuda()
-    elif cnn_type == 'resnet-50':
-        torch_model_cpu = resnet(depth=50, num_classes=class_num)
+    elif cnn_type == 'resnet-56':
+        torch_model_cpu = resnet(depth=56, num_classes=class_num)
         if gpu:
-            torch_model_gpu = resnet(depth=50, num_classes=class_num).cuda()
+            torch_model_gpu = resnet(depth=56, num_classes=class_num).cuda()
     elif cnn_type == 'resnet-32':
         torch_model_cpu = resnet(depth=32, num_classes=class_num)
         if gpu:
