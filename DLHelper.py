@@ -1,18 +1,34 @@
 import h5py, cv2
-from six.moves import cPickle
 import csv, time, os.path
 import matplotlib.pyplot as plt
 import numpy as np
+from six.moves import cPickle
+from sklearn import model_selection as ms
 
 # function to process a single image
-def processImage(prefix, size, gtReader, proc_type=None):
+def processImage(prefix, size, gtReader, proc_type=None, is_lisa=False, class_match=None):
     images = []
     labels = []
 
     for row in gtReader:
-        image = cv2.imread(prefix + row[0])
+        if is_lisa:
+            params = {"name": row[0], \
+                    "box": (int(row[3]), int(row[5]), int(row[2]), int(row[4])), \
+                    "label": class_match[row[1]] if row[1] in class_match.keys() else None}
+            if params['label'] is None: # No such class
+                print(row[1])
+                continue
+        else:
+            params = {"name": row[0], \
+                    "box": (int(row[4]), int(row[6]), int(row[3]), int(row[5])), \
+                    "label": int(row[7])}
+
+        image = cv2.imread(prefix + params["name"])
+        if image.shape[2] != 3: # Gray?
+            print(params["name"])
+
         # image = image[...,::-1] # BGR to RGB
-        image = image[int(row[4]):int(row[6]), int(row[3]):int(row[5])] # Crop the ROI
+        image = image[params["box"][0]:params["box"][1], params["box"][2]:params["box"][3]] # Crop the ROI
         image = cv2.resize(image, size) # Resize images 
         if proc_type is None:
             pass
@@ -38,10 +54,13 @@ def processImage(prefix, size, gtReader, proc_type=None):
             image[:,:,1] = cv2.normalize(G, None, G.mean() - param * G.std(), G.mean() + param * G.std(), cv2.NORM_MINMAX)
             # image[:,:,2] = cv2.normalize(B, None, B.mean() - param * B.std(), B.mean() + param * B.std(), cv2.NORM_MINMAX)
             image[:,:,2] = cv2.normalize(R, None, R.mean() - param * R.std(), R.mean() + param * R.std(), cv2.NORM_MINMAX)
-                        
+
+        if not hasattr(image, 'shape'):
+            print(image)
+            print(params["name"])
 
         images.append(image) # Already uint8
-        labels.append(int(row[7])) # the 8th column is the label
+        labels.append(params["label"])
 
     return images, labels
 
@@ -100,6 +119,59 @@ def readTrafficSigns_Belgium(rootpath, size, process=None, training=True):
 
     return images, labels
 
+def readLISACategories(rootpath):
+    # Read categories
+    f = open("{}categories.txt".format(rootpath))
+    content = f.readlines()
+
+    # Get categories
+    count = 0
+    class_match = {}
+    for line in content:
+        splitted = (line.strip().split(': ')[-1]).split(', ')
+        for c in splitted:
+            if c == "thruTrafficMergeLeft":
+                class_match[c] = class_match["thruMergeLeft"] # Duplicated
+                continue
+            class_match[c] = count
+            count += 1
+    class_num = len(class_match.keys()) - 1
+    f.close()
+    return class_match, class_num
+
+def readTrafficSigns_LISA(rootpath, size, process=None, training=True):
+    class_match, class_num = readLISACategories(rootpath)
+
+    images = []
+    labels = []
+
+    # All folder names
+    folders = []
+    folders += ["aiua120214-{}".format(i) for i in range(0, 3)]
+    folders += ["aiua120306-{}".format(i) for i in range(0, 2)]
+    folders += ["vid{}".format(i) for i in range(0, 12)]
+
+    # Read all annotations
+    for folder in folders:
+        folder = rootpath + folder
+        under = os.listdir(folder)
+        for u in under:
+            if u.startswith("frame"):
+                folder = folder + '/' + u
+                break
+        annotations = folder + "/frameAnnotations.csv"
+        gtFile = open(annotations)
+        gtReader = csv.reader(gtFile, delimiter=';') # csv parser for annotations file
+        next(gtReader) # skip header
+        imgs, lbls = processImage(folder + "/", size, gtReader, process, True, class_match)
+        images = images + imgs
+        labels = labels + lbls
+        gtFile.close()
+
+    trainImages, testImages, trainLabels, testLabels = ms.train_test_split(images, labels, test_size=0.2, random_state=542)
+
+    return trainImages, trainLabels, testImages, testLabels, class_num
+
 def getDirFuncClassNum(root, dataset="GT"):
     train_dir, test_dir, readTrafficSigns = None, None, None
     class_num = -1
@@ -115,8 +187,14 @@ def getDirFuncClassNum(root, dataset="GT"):
         test_dir = root + "Testing"
         readTrafficSigns = readTrafficSigns_Belgium
         class_num = 62
+    elif dataset == "LISA":
+        root += "LISA/"
+        train_dir = None
+        test_dir = None
+        readTrafficSigns = readTrafficSigns_LISA
+        class_num = 46 # 1 duplicated, 47
     else:
-        raise Exception("No such dataset.")
+        raise Exception("No such dataset!")
 
     return root, train_dir, test_dir, readTrafficSigns, class_num
 
@@ -136,12 +214,13 @@ def getImageSets(root, resize_size, dataset="GT", process=None, printing=True):
     ## Else, read images and write to the pickle file
     else:
         start = time.time()
-        trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, process, True)
-        print("Training Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
-
-        start = time.time()
-        testImages, testLabels = readTrafficSigns(test_dir, resize_size, process, False)
-        print("Testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
+        if dataset == "GT" or dataset == "Belgium":
+            trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, process, True)
+            testImages, testLabels = readTrafficSigns(test_dir, resize_size, process, False)
+        else: # LISA
+            trainImages, trainLabels, testImages, testLabels, class_num = readTrafficSigns(root, resize_size, process)
+            print(class_num)
+        print("Training and testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
         
         f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original")), 'wb')
 
@@ -155,7 +234,7 @@ def getImageSets(root, resize_size, dataset="GT", process=None, printing=True):
         plt.show()
 
         print(testImages[21].shape)
-        plt.imshow(trainImages[21])
+        plt.imshow(testImages[21])
         plt.show()
 
     return root, trainImages, trainLabels, testImages, testLabels, class_num
@@ -208,3 +287,8 @@ def init_h5py(filename, epoch_num, max_total_batch):
         raise e # Catch the exception to close the file, then raise it to stop the program
 
     return f
+
+if __name__ == '__main__':
+    root = "/Users/moderato/Downloads/"
+    resize_size = (48, 48)
+    # print(getImageSets(root, resize_size, dataset="LISA", process=None, printing=True))
