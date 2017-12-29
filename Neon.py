@@ -148,7 +148,7 @@ def constructCNN(cnn_type="self"):
         layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
     #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
         layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
-        layers.append(neon_Dropout(keep=0.5, name="neon_drop_out"))
+        layers.append(neon_Dropout(keep=0.5, name="neon_dropout1"))
         layers.append(Affine(nout=class_num, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "resnet-56":
         layers = resnet(9, class_num) # 6*9 + 2 = 56

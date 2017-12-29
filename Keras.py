@@ -119,7 +119,7 @@ def constructCNN(layer_name_prefix, cnn_type="self"):
         # keras_model.add(keras_AveragePooling(name=layer_name_prefix+"global_pool"))
         keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
         keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
-        keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"drop_out"))
+        keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"dropout1"))
         keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
     elif cnn_type =="resnet-56":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)

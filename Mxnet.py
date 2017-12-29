@@ -83,7 +83,7 @@ def constructCNN(cnn_type='self'):
         mx_mp2 = mx.sym.Pooling(data = mx_act2, name = 'mx_pool2', kernel=(2,2), stride=(2,2), pool_type='max')
         mx_fl = mx.sym.Flatten(data = mx_mp2, name="mx_flatten")
         mx_fc1 = mx.sym.FullyConnected(data = mx_fl, name='mx_fc1', num_hidden=2048)
-        mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout', p=0.5)
+        mx_drop = mx.sym.Dropout(data = mx_fc1, name='mx_dropout1', p=0.5)
         mx_fc2 = mx.sym.FullyConnected(data = mx_drop, name='mx_fc2', num_hidden=class_num)
         mx_softmax = mx.sym.SoftmaxOutput(data = mx_fc2, name ='softmax')
     elif cnn_type == 'resnet-56':
