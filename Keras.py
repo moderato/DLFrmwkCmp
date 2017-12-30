@@ -121,9 +121,9 @@ def constructCNN(layer_name_prefix, cnn_type="self"):
         keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
         keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"dropout1"))
         keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
-    elif cnn_type =="resnet-56":
+    elif cnn_type == "resnet-56":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)
-    elif cnn_type =="resnet-32":
+    elif cnn_type == "resnet-32":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 32, num_classes=class_num)
 
     return keras_model
@@ -150,7 +150,7 @@ else:
 for b in backends:
     set_keras_backend(b)
 
-    max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
+    max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
     # Load and process images
     keras_train_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_train])
@@ -186,7 +186,7 @@ for b in backends:
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
-    keras_test_accuracy = 100*np.sum(np.array(keras_predictions)==np.argmax(keras_test_y, axis=1))/len(keras_predictions)
+    keras_test_accuracy = 100 * np.sum(np.array(keras_predictions)==np.argmax(keras_test_y, axis=1))/len(keras_predictions)
     losses.f['.']['infer_acc']['accuracy'][0] = np.float32(keras_test_accuracy)
     losses.f.close()
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))

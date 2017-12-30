@@ -148,7 +148,7 @@ torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
 torch_model_cpu, torch_model_gpu = constructCNN('idsia', gpu=False)
-max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
+max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 print(torch_model_gpu)
 
 def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch = None):
@@ -235,15 +235,16 @@ for b in backends:
     filename = "{}/saved_data/callback_data_pytorch_{}_{}.h5".format(root, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
+        f['.']['time']['train']['start_time'][0] = time.time()
         for epoch in range(epoch_num):
 
             # Start training and save start and end time
-            f['.']['time']['train']['start_time'][0] = time.time()
             batch_count = train(torch_model, optimizer, torch_train_set, f, batch_count, use_gpu, epoch)
-            f['.']['time']['train']['end_time'][0] = time.time()
 
             # Validation per epoch
             valid(torch_model, optimizer, torch_valid_set, f, use_gpu, epoch)
+            
+        f['.']['time']['train']['end_time'][0] = time.time()
 
         # Save total batch count
         f['.']['config'].attrs["total_minibatches"] = batch_count

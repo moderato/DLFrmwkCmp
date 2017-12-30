@@ -143,7 +143,7 @@ for b in backends:
     else: # GPU
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
-    max_total_batch = (len(x_train) / batch_size + 1) * epoch_num
+    max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
     filename = "{}/saved_data/callback_data_mxnet_{}.h5".format(root, b)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
