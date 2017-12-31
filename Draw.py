@@ -11,22 +11,23 @@ if platform == "darwin":
 else:
     root = "/home/zhongyilin/Desktop/GTSRB/try"
 
-model = 'IDSIA'
+model = 'resnet-56'
 data_path = root + "/saved_data/" + model
+dataset = "GT"
 
-gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "keras_cntk", "mxnet", "pytorch"]
-cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_cntk", "mxnet", "pytorch"]
+gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
+cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
 
 # gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
 # cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
 
 colors = {'neon': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
-    'keras_theano': 'c', 'keras_cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}
+    'keras_theano': 'c', 'cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}
 
 markers = {'neon': 'o', 'neon_mkl': 'x', 'keras_tensorflow': 'p',\
-    'keras_theano': 'v', 'keras_cntk': '+', 'mxnet': 's', 'pytorch': '*'}
+    'keras_theano': 'v', 'cntk': '+', 'mxnet': 's', 'pytorch': '*'}
 
-ylim_high = {'IDSIA': 4, 'self': 4, 'resnet-34': 2.5, 'resnet-50': 6.5}
+ylim_high = {'IDSIA': 4, 'self': 4, 'resnet-32': 2.5, 'resnet-56': 6.5}
 
 figs = [None] * 10
 axes = [None] * 10
@@ -67,7 +68,7 @@ for n in range(0, 2):
         valid_acc_epoch = pd.DataFrame()
         train_epoch_mark = dict()
         
-        f = h5py.File(data_path+"/callback_data_{}_{}.h5".format(b, device), "r")
+        f = h5py.File(data_path+"/callback_data_{}_{}_{}.h5".format(b, device, dataset), "r")
         actual_length = f['.']['config'].attrs['total_minibatches']
         
         train_cost_batch['{}_loss'.format(b)] = pd.Series(f['.']['cost']['train'][()]).iloc[0:actual_length] # Training loss per batch
