@@ -1,52 +1,44 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from sklearn import model_selection as ms
-from sys import platform
-import DLHelper
-from timeit import default_timer
-import keras_resnet
+import time, sys, DLHelper
 
-if platform == "darwin":
+if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
     root = "/home/zhongyilin/Desktop/"
 print(root)
 
-resize_size = (48, 48)
-dataset = "GT"
+network_type = sys.argv[1]
+if network_type == "idsia":
+    resize_size = (48, 48)
+else:
+    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
+dataset = sys.argv[4]
+epoch_num = int(sys.argv[5])
+batch_size = int(sys.argv[6])
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=True)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 25
-batch_size = 64
-
-from keras.layers import (
-    Conv2D,
-    MaxPooling2D
-)
-from keras.layers import (
-    Dropout, 
-    Dense, 
-    Flatten
-)
+from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Dropout, Dense, Flatten
 from keras.models import Sequential
 from keras.utils import np_utils, to_categorical
 from keras import backend as K
 from keras.preprocessing import image
-from keras.initializers import RandomNormal, Constant as keras_Constant
-from keras.optimizers import SGD as keras_SGD, RMSprop as keras_RMSProp
-from keras.callbacks import ModelCheckpoint, Callback as keras_callback
-from sklearn import model_selection as ms
+from keras.initializers import RandomNormal, Constant
+from keras.optimizers import SGD, RMSprop
+from keras.callbacks import ModelCheckpoint, Callback
 from keras.layers.convolutional import ZeroPadding2D
 from keras.models import model_from_json
-import os, h5py
+import os
 from timeit import default_timer
+import keras_resnet
 
-class LossHistory(keras_callback):
+class LossHistory(Callback):
     def __init__(self, filename, epoch_num, max_total_batch):
-        super(keras_callback, self).__init__()
+        super(Callback, self).__init__()
         
         self.batch_count = 0
         self.epoch_num = epoch_num
@@ -98,36 +90,36 @@ class LossHistory(keras_callback):
             self.f.close()
             raise e
 
-def constructCNN(layer_name_prefix, cnn_type="self"):
+def constructCNN(cnn_type="self"):
     keras_model = Sequential()
     if cnn_type == "idsia":
         keras_model.add(Conv2D(100, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv1"))
-        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_conv1"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name="keras_pool1"))
         keras_model.add(Conv2D(150, (4, 4), strides=(1, 1), activation="relu", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv2"))
-        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_conv2"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name="keras_pool2"))
         keras_model.add(Conv2D(250, (3, 3), strides=(1, 1), activation="relu", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv3"))
-        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool3"))
-        keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_conv3"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name="keras_pool3"))
+        keras_model.add(Flatten(name="keras_flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
         keras_model.add(Dense(200, activation="relu", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc1"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_fc1"))
         keras_model.add(Dense(class_num, activation="softmax", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc2"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_fc2"))
     elif cnn_type == "self":
         keras_model.add(Conv2D(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv1"))
-        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_conv1"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name="keras_pool1"))
         keras_model.add(Conv2D(256, (3, 3), strides=(1, 1), padding="same", activation="relu", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv2"))
-        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
-        keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_conv2"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name="keras_pool2"))
+        keras_model.add(Flatten(name="keras_flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
         keras_model.add(Dense(2048, activation="relu", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc1"))
-        keras_model.add(Dropout(0.5, name=layer_name_prefix+"dropout1"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_fc1"))
+        keras_model.add(Dropout(0.5, name="keras_dropout1"))
         keras_model.add(Dense(class_num, activation="softmax", 
-            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc2"))
+            kernel_initializer='he_normal', bias_initializer='zeros', name="keras_fc2"))
     elif cnn_type == "resnet-56":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)
     elif cnn_type == "resnet-32":
@@ -168,20 +160,18 @@ for b in backends:
     keras_test_y = to_categorical(testLabels, class_num)
 
     # Build model
-    layer_name_prefix = b+"_"
-
-    keras_model = constructCNN(layer_name_prefix, "resnet-32")
+    keras_model = constructCNN(network_type)
 
     keras_model.summary()
 
-    keras_optimizer = keras_SGD(lr=0.01, decay=1.6e-8, momentum=0.9) # Equivalent to decay rate 0.2 per epoch? Need to re-verify
-#     keras_optimizer = keras_RMSProp(lr=0.01, decay=0.95)
+    keras_optimizer = SGD(lr=0.01, decay=1.6e-8, momentum=0.9) # Equivalent to decay rate 0.2 per epoch? Need to re-verify
+#     keras_optimizer = RMSProp(lr=0.01, decay=0.95)
     keras_cost = "categorical_crossentropy"
     keras_model.compile(loss=keras_cost, optimizer=keras_optimizer, metrics=["acc"])
 
-    checkpointer = ModelCheckpoint(filepath="./saved_models/keras_{}_{}_{}_weights.hdf5".format(b, device, dataset),
+    checkpointer = ModelCheckpoint(filepath="{}saved_models/{}/keras_{}_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset),
                                        verbose=1, save_best_only=True)
-    losses = LossHistory("./saved_data/callback_data_keras_{}_{}_{}.h5".format(b, device, dataset), epoch_num, max_total_batch)
+    losses = LossHistory("{}saved_data/{}/callback_data_keras_{}_{}_{}.h5".format(root, network_type, b, device, dataset), epoch_num, max_total_batch)
 
     start = time.time()
     keras_model.fit(keras_train_x, keras_train_y,
@@ -189,7 +179,7 @@ for b in backends:
                   epochs=epoch_num, batch_size=batch_size, callbacks=[checkpointer, losses], verbose=1, shuffle=True)
     print("{} training finishes in {:.2f} seconds.".format(b, time.time() - start))
 
-    keras_model.load_weights("./saved_models/keras_{}_{}_{}_weights.hdf5".format(b, device, dataset)) # Load the best model (not necessary the latest one)
+    keras_model.load_weights("{}saved_models/{}/keras_{}_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset)) # Load the best model (not necessary the latest one)
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
@@ -199,6 +189,6 @@ for b in backends:
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
 
     json_string = keras_model.to_json()
-    js = open("./saved_models/keras_{}_{}_{}_config.json".format(b, device, dataset), "w")
+    js = open("{}saved_models/{}/keras_{}_{}_{}_config.json".format(root, network_type, b, device, dataset), "w")
     js.write(json_string)
     js.close()

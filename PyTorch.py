@@ -1,26 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from sklearn import model_selection as ms
-from sys import platform
-import DLHelper
-from timeit import default_timer
-from pytorch_resnet import resnet
+import time, sys, DLHelper
 
-if platform == "darwin":
+if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
     root = "/home/zhongyilin/Desktop/"
 print(root)
 
-resize_size = (48, 48)
-dataset = "Belgium"
+network_type = sys.argv[1]
+if network_type == "idsia":
+    resize_size = (48, 48)
+else:
+    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
+dataset = sys.argv[4]
+epoch_num = int(sys.argv[5])
+batch_size = int(sys.argv[6])
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
-
-epoch_num = 1
-batch_size = 64
 
 import torch
 import torch.nn.functional as F
@@ -29,14 +28,16 @@ import torch.utils.data as utils
 import torch.nn.init as torch_init
 from torchvision import datasets, transforms
 from torch.autograd import Variable
+from timeit import default_timer
+from pytorch_resnet import resnet
 
 class Flatten(torch.nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
-class LuganoNet(torch.nn.Module):
+class IDSIANet(torch.nn.Module):
     def __init__(self):
-        super(LuganoNet, self).__init__()
+        super(IDSIANet, self).__init__()
 
         # Build model
         self.conv = torch.nn.Sequential()
@@ -49,7 +50,6 @@ class LuganoNet(torch.nn.Module):
         self.conv.add_module("torch_conv3", torch.nn.Conv2d(150, 250, kernel_size=(3, 3), stride=1))
         self.conv.add_module("torch_pool3", torch.nn.MaxPool2d(kernel_size=2))
         self.conv.add_module("torch_relu3", torch.nn.ReLU())
-        # self.conv.add_module("torch_global_pool", torch.nn.AvgPool2d(kernel_size=5))
         self.conv.add_module("torch_flatten", Flatten())
 
         
@@ -87,7 +87,6 @@ class ConvNet(torch.nn.Module):
         self.conv.add_module("torch_conv2", torch.nn.Conv2d(64, 256, kernel_size=(3, 3), stride=1, padding=1))
         self.conv.add_module("torch_pool2", torch.nn.MaxPool2d(kernel_size=2))
         self.conv.add_module("torch_relu2", torch.nn.ReLU())
-        # self.conv.add_module("torch_global_pool", torch.nn.AvgPool2d(kernel_size=5))
         self.conv.add_module("torch_flatten", Flatten())
 
         
@@ -115,9 +114,9 @@ class ConvNet(torch.nn.Module):
 def constructCNN(cnn_type='self', gpu=True):
     torch_model_cpu, torch_model_gpu = None, None
     if cnn_type == "idsia":
-        torch_model_cpu = LuganoNet()
+        torch_model_cpu = IDSIANet()
         if gpu:
-            torch_model_gpu = LuganoNet().cuda()
+            torch_model_gpu = IDSIANet().cuda()
     elif cnn_type == "self":
         torch_model_cpu = ConvNet()
         if gpu:
@@ -147,9 +146,8 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model_cpu, torch_model_gpu = constructCNN('idsia', gpu=False)
+torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=False)
 max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
-print(torch_model_gpu)
 
 def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch = None):
     if gpu:
@@ -232,7 +230,7 @@ for b in backends:
     torch_model = torch_model_gpu if use_gpu else torch_model_cpu
     optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
-    filename = "{}/saved_data/callback_data_pytorch_{}_{}.h5".format(root, b, dataset)
+    filename = "{}/saved_data/{}/callback_data_pytorch_{}_{}.h5".format(root, network_type, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
         f['.']['time']['train']['start_time'][0] = time.time()
@@ -253,7 +251,7 @@ for b in backends:
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
 
-        torch.save(torch_model, "{}saved_model/pytorch_{}_{}.pth".format(root, b, dataset))
+        torch.save(torch_model, "{}saved_model/{}/pytorch_{}_{}.pth".format(root, network_type, b, dataset))
     except KeyboardInterrupt:
         pass
     except Exception as e:

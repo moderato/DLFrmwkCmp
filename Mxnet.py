@@ -1,29 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from sklearn import model_selection as ms
-from sys import platform
-import DLHelper
-from mxnet_resnet import get_symbol
+import time, sys, DLHelper
 
-if platform == "darwin":
+if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
     root = "/home/zhongyilin/Desktop/"
 print(root)
 
-resize_size = (48, 48)
-dataset = "Belgium"
+network_type = sys.argv[1]
+if network_type == "idsia":
+    resize_size = (48, 48)
+else:
+    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
+dataset = sys.argv[4]
+epoch_num = int(sys.argv[5])
+batch_size = int(sys.argv[6])
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 1
-batch_size = 64
-
 import mxnet as mx
 import logging
 from timeit import default_timer
+from mxnet_resnet import get_symbol
 logging.getLogger().setLevel(logging.DEBUG)  # logging to stdout
 
 # class MxCustomInit(mx.initializer.Initializer):
@@ -110,7 +111,7 @@ mx_test_set = mx.io.NDArrayIter(mx_test_x, mx_test_y, batch_size)
 # Print the shape and type of training set lapel
 # mx_train_set.provide_label
 
-mx_softmax = constructCNN("idsia")
+mx_softmax = constructCNN(network_type)
 
 # Print the names of arguments in the model
 # mx_softmax.list_arguments() # Make sure the input and the output names are consistent of those in the iterator!!
@@ -144,7 +145,7 @@ for b in backends:
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
-    filename = "{}/saved_data/callback_data_mxnet_{}.h5".format(root, b)
+    filename = "{}/saved_data/{}/callback_data_mxnet_{}_{}.h5".format(root, network_type, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
     try:
@@ -153,7 +154,7 @@ for b in backends:
 
         # allocate memory given the input data and label shapes
         mx_model.bind(data_shapes=mx_train_set.provide_data, label_shapes=mx_train_set.provide_label)
-        # initialize parameters by uniform random numbers
+        # initialize parameters by he-normal random numbers
         mx_model.init_params(mx.initializer.MSRAPrelu('in', 0.0))
         # use SGD with learning rate 0.1 to train
         mx_model.init_optimizer(optimizer='sgd', optimizer_params=(('learning_rate', 0.01), ('momentum', 0.9)))
@@ -214,8 +215,8 @@ for b in backends:
         f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1] * 100.0)
         print("Accuracy score is %f" % (score[0][1]))
 
-        mx_model.save_params("{}saved_models/mxnet_{}_{}.params".format(root, b, dataset))
-        mx_model._symbol.save("{}saved_models/mxnet_{}_{}.json".format(root, b, dataset))
+        mx_model.save_params("{}saved_models/{}/mxnet_{}_{}.params".format(root, network_type, b, dataset))
+        mx_model._symbol.save("{}saved_models/{}/mxnet_{}_{}.json".format(root, network_type, b, dataset))
         
     except KeyboardInterrupt:
         pass

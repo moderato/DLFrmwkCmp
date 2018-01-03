@@ -1,36 +1,36 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 from sklearn import model_selection as ms
-from sys import platform
-import DLHelper
-from timeit import default_timer
+import time, sys, DLHelper
 
-if platform == "darwin":
+if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
     root = "/home/zhongyilin/Desktop/"
 print(root)
 
-resize_size = (48, 48)
-dataset = "GT"
+network_type = sys.argv[1]
+if network_type == "idsia":
+    resize_size = (48, 48)
+else:
+    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
+dataset = sys.argv[4]
+epoch_num = int(sys.argv[5])
+batch_size = int(sys.argv[6])
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-epoch_num = 25
-batch_size = 64
-
 import cntk as C
 import cntk_resnet
-from cntk.learners import momentum_sgd as cntk_SGD
-from cntk import cross_entropy_with_softmax as cntk_softmax, classification_error as cntk_error
+from cntk.learners import momentum_sgd as SGD
+from cntk import cross_entropy_with_softmax as Softmax, classification_error as ClassificationError
 from cntk.io import MinibatchSourceFromData
 from cntk.logging import ProgressPrinter
 from cntk.train.training_session import *
 from cntk.initializer import he_normal
+from cntk import persist
 from timeit import default_timer
-import os
 
 backend = 'cpu'
 if C.device.use_default_device().type() == 0:
@@ -39,37 +39,37 @@ else:
     print('running on GPU')
     backend = 'gpu'
 
-def constructCNN(cntk_input, layer_name_prefix, cnn_type='self'):
+def constructCNN(cntk_input, cnn_type='self'):
     model = None
     if cnn_type == 'idsia':
         with C.layers.default_options(activation=C.relu):
             model = C.layers.Sequential([
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=100, pad=False,
-                    init=he_normal(), name=layer_name_prefix+"conv1"),
-                C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool1"),
+                    init=he_normal(), name="cntk_conv1"),
+                C.layers.MaxPooling((2,2), strides=(2,2), name="cntk_pool1"),
                 C.layers.Convolution((4,4), strides=(1,1), num_filters=150, pad=False,
-                    init=he_normal(), name=layer_name_prefix+"conv2"),
-                C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool2"),
+                    init=he_normal(), name="cntk_conv2"),
+                C.layers.MaxPooling((2,2), strides=(2,2), name="cntk_pool2"),
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=250, pad=False,
-                    init=he_normal(), name=layer_name_prefix+"conv3"),
-                C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool3"),
+                    init=he_normal(), name="cntk_conv3"),
+                C.layers.MaxPooling((2,2), strides=(2,2), name="cntk_pool3"),
 
-                C.layers.Dense(200, init=he_normal(), name=layer_name_prefix+"fc1"),
-                C.layers.Dense(class_num, activation=None, init=he_normal(), name=layer_name_prefix+"fc2") # Leave the softmax for now
+                C.layers.Dense(200, init=he_normal(), name="cntk_fc1"),
+                C.layers.Dense(class_num, activation=None, init=he_normal(), name="cntk_fc2") # Leave the softmax for now
             ])(cntk_input)
     elif cnn_type == 'self':
         with C.layers.default_options(activation=C.relu):
             model = C.layers.Sequential([
                 C.layers.Convolution((5,5), strides=(2,2), num_filters=64, pad=True,
-                    init=he_normal(), name=layer_name_prefix+"conv1"),
-                C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool1"),
+                    init=he_normal(), name="cntk_conv1"),
+                C.layers.MaxPooling((2,2), strides=(2,2), name="cntk_pool1"),
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=256, pad=True,
-                    init=he_normal(), name=layer_name_prefix+"conv2"),
-                C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool2"),
+                    init=he_normal(), name="cntk_conv2"),
+                C.layers.MaxPooling((2,2), strides=(2,2), name="cntk_pool2"),
 
-                C.layers.Dense(2048, init=he_normal(), name=layer_name_prefix+"fc1"),
-                C.layers.Dropout(0.5, name=layer_name_prefix+"dropout1"),
-                C.layers.Dense(class_num, activation=None, init=he_normal(), name=layer_name_prefix+"fc2") # Leave the softmax for now
+                C.layers.Dense(2048, init=he_normal(), name="cntk_fc1"),
+                C.layers.Dropout(0.5, name="cntk_dropout1"),
+                C.layers.Dense(class_num, activation=None, init=he_normal(), name="cntk_fc2") # Leave the softmax for now
             ])(cntk_input)
     elif cnn_type == "resnet-56":
         model = cntk_resnet.create_model(cntk_input, 9, class_num) # 6*9 + 2 = 56
@@ -81,9 +81,9 @@ def constructCNN(cntk_input, layer_name_prefix, cnn_type='self'):
 # Construct model, io and metrics
 cntk_input = C.input_variable((3, resize_size[0], resize_size[1]), np.float32)
 cntk_output = C.input_variable((class_num), np.float32)
-cntk_model = constructCNN(cntk_input, 'cntk_', 'idsia')
-cntk_cost = cntk_softmax(cntk_model, cntk_output)
-cntk_error = cntk_error(cntk_model, cntk_output)
+cntk_model = constructCNN(cntk_input, network_type)
+cntk_cost = Softmax(cntk_model, cntk_output)
+cntk_error = ClassificationError(cntk_model, cntk_output)
 
 
 # Construct data
@@ -97,7 +97,7 @@ cntk_test_y = C.one_hot(C.input_variable(1), class_num, sparse_output=False)(np.
 
 
 # Trainer and mb source
-cntk_learner = cntk_SGD(cntk_model.parameters, lr=0.01, momentum=0.9)
+cntk_learner = SGD(cntk_model.parameters, lr=0.01, momentum=0.9)
 cntk_trainer = C.Trainer(cntk_model, (cntk_cost, cntk_error), cntk_learner)
 cntk_train_src = C.io.MinibatchSourceFromData(dict(x=C.Value(cntk_train_x), y=C.Value(cntk_train_y)), max_samples=len(cntk_train_x))
 cntk_valid_src = C.io.MinibatchSourceFromData(dict(x=C.Value(cntk_valid_x), y=C.Value(cntk_valid_y)), max_samples=len(cntk_valid_x))
@@ -115,8 +115,7 @@ def getMap(src, bs):
 train_batch_count = len(x_train) // batch_size + 1
 valid_batch_count = len(x_valid) // batch_size + 1
 test_batch_count = len(testImages) // batch_size + 1
-restart_checkpoint = {'cursor': 0, 'total_num_samples': 0}
-filename = "{}/saved_data/callback_data_cntk_{}_{}.h5".format(root, backend, dataset)
+filename = "{}saved_data/{}/callback_data_cntk_{}_{}.h5".format(root, backend, dataset)
 f = DLHelper.init_h5py(filename, epoch_num, train_batch_count * epoch_num)
 
 # Start training
@@ -126,9 +125,9 @@ try:
 
     # Each epoch
     for epoch in range(0, epoch_num):
-        cntk_train_src.restore_from_checkpoint(restart_checkpoint)
-        cntk_valid_src.restore_from_checkpoint(restart_checkpoint)
-        cntk_test_src.restore_from_checkpoint(restart_checkpoint)
+        cntk_train_src.restore_from_checkpoint({'cursor': 0, 'total_num_samples': 0})
+        cntk_valid_src.restore_from_checkpoint({'cursor': 0, 'total_num_samples': 0})
+        cntk_test_src.restore_from_checkpoint({'cursor': 0, 'total_num_samples': 0})
 
         # Each batch
         for i in range(train_batch_count):
@@ -195,6 +194,8 @@ try:
 
     f['.']['infer_acc']['accuracy'][0] = np.float32((1.0 - test_error) * 100.0)
     print("Accuracy score is %f" % (1.0 - test_error))
+
+    persist(cntk_model, "{}saved_model/{}/cntk_{}_{}.pth".format(root, network_type, backend, dataset))
 
 except KeyboardInterrupt:
     pass

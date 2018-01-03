@@ -1,25 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import time
-import h5py
 from sklearn import model_selection as ms
-import DLHelper
-from sys import platform
+import time, sys, DLHelper
 
-if platform == "darwin":
+if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
     root = "/home/zhongyilin/Desktop/"
 print(root)
 
-resize_size = (48, 48)
-dataset = "GT"
+network_type = sys.argv[1]
+if network_type == "idsia":
+    resize_size = (48, 48)
+else:
+    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
+dataset = sys.argv[4]
+epoch_num = int(sys.argv[5])
+batch_size = int(sys.argv[6])
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=True)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
-
-epoch_num = 25
-batch_size = 64
 
 from neon.backends import gen_backend, cleanup_backend
 from neon.initializers import (
@@ -35,7 +35,7 @@ from neon.layers import (
     Pooling
 )
 from neon.transforms import (
-    Rectlin, au
+    Rectlin,
     Softmax, 
     CrossEntropyMulti, 
     Misclassification, 
@@ -161,7 +161,7 @@ mlp = None
 neon_backends = ["cpu", "mkl", "gpu"]
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": True, "mkl": False, "gpu": False}
+run_or_not = {"cpu": False, "mkl": True, "gpu": False}
 
 cleanup_backend()
 
@@ -181,7 +181,7 @@ for b in neon_backends:
         neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
 
         # Initialize model object
-        mlp = SelfModel(layers=constructCNN("idsia"))
+        mlp = SelfModel(layers=constructCNN(network_type))
 
         # Costs
         neon_cost = GeneralizedCost(costfunc=CrossEntropyMulti())
@@ -204,7 +204,7 @@ for b in neon_backends:
         # mlp.initialize(neon_train_set, neon_cost)
 
         # Callbacks: validate on validation set
-        callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/callback_data_neon_{}.h5".format(root, b))
+        callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/callback_data_neon_{}_{}.h5".format(root, network_type, b, dataset))
         callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
 
         # Fit
@@ -228,7 +228,7 @@ for b in neon_backends:
         # neon_error_top5 = mlp.eval(neon_valid_set, metric=TopKMisclassification(5))*100
         # print('Top 5 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top5[2], time.time() - start))
 
-        mlp.save_params("{}saved_models/neon_weights_{}.prm".format(root, b))
+        mlp.save_params("{}saved_models/{}/neon_weights_{}_{}.prm".format(root, network_type, b, dataset))
 
         # # Print error on test set
         # start = time.time()
