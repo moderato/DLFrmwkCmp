@@ -22,13 +22,12 @@ x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabel
 epoch_num = 25
 batch_size = 64
 
-from keras.layers import Conv2D as keras_Conv
 from keras.layers import (
-    MaxPooling2D as keras_MaxPooling, 
-    GlobalAveragePooling2D as keras_AveragePooling
+    Conv2D,
+    MaxPooling2D
 )
 from keras.layers import (
-    Dropout as keras_Dropout, 
+    Dropout, 
     Dense, 
     Flatten
 )
@@ -102,25 +101,33 @@ class LossHistory(keras_callback):
 def constructCNN(layer_name_prefix, cnn_type="self"):
     keras_model = Sequential()
     if cnn_type == "idsia":
-        keras_model.add(keras_Conv(100, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
-        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
-        keras_model.add(keras_Conv(150, (4, 4), strides=(1, 1), activation="relu", name=layer_name_prefix+"conv2"))
-        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
-        keras_model.add(keras_Conv(250, (3, 3), strides=(1, 1), activation="relu", name=layer_name_prefix+"conv3"))
-        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool3"))
+        keras_model.add(Conv2D(100, (3, 3), strides=(1, 1), activation="relu", input_shape=(resize_size[0], resize_size[1], 3), 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv1"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+        keras_model.add(Conv2D(150, (4, 4), strides=(1, 1), activation="relu", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv2"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
+        keras_model.add(Conv2D(250, (3, 3), strides=(1, 1), activation="relu", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv3"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool3"))
         keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
-        keras_model.add(Dense(200, activation="relu", name=layer_name_prefix+"fc1"))
-        keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
+        keras_model.add(Dense(200, activation="relu", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc1"))
+        keras_model.add(Dense(class_num, activation="softmax", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc2"))
     elif cnn_type == "self":
-        keras_model.add(keras_Conv(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), name=layer_name_prefix+"conv1"))
-        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
-        keras_model.add(keras_Conv(256, (3, 3), strides=(1, 1), padding="same", activation="relu", name=layer_name_prefix+"conv2"))
-        keras_model.add(keras_MaxPooling(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
-        # keras_model.add(keras_AveragePooling(name=layer_name_prefix+"global_pool"))
+        keras_model.add(Conv2D(64, (5, 5), strides=(2, 2), padding="same", activation="relu", input_shape=(resize_size[0], resize_size[1], 3), 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv1"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool1"))
+        keras_model.add(Conv2D(256, (3, 3), strides=(1, 1), padding="same", activation="relu", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"conv2"))
+        keras_model.add(MaxPooling2D(pool_size=(2, 2), name=layer_name_prefix+"pool2"))
         keras_model.add(Flatten(name=layer_name_prefix+"flatten")) # An extra layer to flatten the previous layer in order to connect to fully connected layer
-        keras_model.add(Dense(2048, activation="relu", name=layer_name_prefix+"fc1"))
-        keras_model.add(keras_Dropout(0.5, name=layer_name_prefix+"dropout1"))
-        keras_model.add(Dense(class_num, activation="softmax", name=layer_name_prefix+"fc2"))
+        keras_model.add(Dense(2048, activation="relu", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc1"))
+        keras_model.add(Dropout(0.5, name=layer_name_prefix+"dropout1"))
+        keras_model.add(Dense(class_num, activation="softmax", 
+            kernel_initializer='he_normal', bias_initializer='zeros', name=layer_name_prefix+"fc2"))
     elif cnn_type == "resnet-56":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)
     elif cnn_type == "resnet-32":

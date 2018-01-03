@@ -28,7 +28,7 @@ from cntk import cross_entropy_with_softmax as cntk_softmax, classification_erro
 from cntk.io import MinibatchSourceFromData
 from cntk.logging import ProgressPrinter
 from cntk.train.training_session import *
-from cntk.initializer import xavier
+from cntk.initializer import he_normal
 from timeit import default_timer
 import os
 
@@ -42,34 +42,34 @@ else:
 def constructCNN(cntk_input, layer_name_prefix, cnn_type='self'):
     model = None
     if cnn_type == 'idsia':
-        with C.layers.default_options(init=C.normal(0.01), activation=C.relu):
+        with C.layers.default_options(activation=C.relu):
             model = C.layers.Sequential([
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=100, pad=False,
-                    name=layer_name_prefix+"conv1"),
+                    init=he_normal(), name=layer_name_prefix+"conv1"),
                 C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool1"),
                 C.layers.Convolution((4,4), strides=(1,1), num_filters=150, pad=False,
-                    name=layer_name_prefix+"conv2"),
+                    init=he_normal(), name=layer_name_prefix+"conv2"),
                 C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool2"),
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=250, pad=False,
-                    name=layer_name_prefix+"conv3"),
+                    init=he_normal(), name=layer_name_prefix+"conv3"),
                 C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool3"),
 
-                C.layers.Dense(200, name=layer_name_prefix+"fc1"),
-                C.layers.Dense(class_num, activation=None, name=layer_name_prefix+"fc2") # Leave the softmax for now
+                C.layers.Dense(200, init=he_normal(), name=layer_name_prefix+"fc1"),
+                C.layers.Dense(class_num, activation=None, init=he_normal(), name=layer_name_prefix+"fc2") # Leave the softmax for now
             ])(cntk_input)
     elif cnn_type == 'self':
-        with C.layers.default_options(init=C.normal(0.01), activation=C.relu):
+        with C.layers.default_options(activation=C.relu):
             model = C.layers.Sequential([
                 C.layers.Convolution((5,5), strides=(2,2), num_filters=64, pad=True,
-                    name=layer_name_prefix+"conv1"),
+                    init=he_normal(), name=layer_name_prefix+"conv1"),
                 C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool1"),
                 C.layers.Convolution((3,3), strides=(1,1), num_filters=256, pad=True,
-                    name=layer_name_prefix+"conv2"),
+                    init=he_normal(), name=layer_name_prefix+"conv2"),
                 C.layers.MaxPooling((2,2), strides=(2,2), name=layer_name_prefix+"pool2"),
 
-                C.layers.Dense(2048, name=layer_name_prefix+"fc1"),
+                C.layers.Dense(2048, init=he_normal(), name=layer_name_prefix+"fc1"),
                 C.layers.Dropout(0.5, name=layer_name_prefix+"dropout1"),
-                C.layers.Dense(class_num, activation=None, name=layer_name_prefix+"fc2") # Leave the softmax for now
+                C.layers.Dense(class_num, activation=None, init=he_normal(), name=layer_name_prefix+"fc2") # Leave the softmax for now
             ])(cntk_input)
     elif cnn_type == "resnet-56":
         model = cntk_resnet.create_model(cntk_input, 9, class_num) # 6*9 + 2 = 56

@@ -26,23 +26,23 @@ import logging
 from timeit import default_timer
 logging.getLogger().setLevel(logging.DEBUG)  # logging to stdout
 
-class MxCustomInit(mx.initializer.Initializer):
-    def __init__(self, idict):
-        super(MxCustomInit, self).__init__()
-        self.dict = idict
-        np.random.seed(seed=1)
+# class MxCustomInit(mx.initializer.Initializer):
+#     def __init__(self, idict):
+#         super(MxCustomInit, self).__init__()
+#         self.dict = idict
+#         np.random.seed(seed=1)
 
-    def _init_weight(self, name, arr):
-        if name in self.dict.keys():
-            dictPara = self.dict[name]
-            for(k, v) in dictPara.items():
-                arr = np.random.normal(0, v, size=arr.shape)
+#     def _init_weight(self, name, arr):
+#         if name in self.dict.keys():
+#             dictPara = self.dict[name]
+#             for(k, v) in dictPara.items():
+#                 arr = np.random.normal(0, v, size=arr.shape)
 
-    def _init_bias(self, name, arr):
-        if name in self.dict.keys():
-            dictPara = self.dict[name]
-            for(k, v) in dictPara.items():
-                arr[:] = v
+#     def _init_bias(self, name, arr):
+#         if name in self.dict.keys():
+#             dictPara = self.dict[name]
+#             for(k, v) in dictPara.items():
+#                 arr[:] = v
 
 class MxBatchCallback(object):
     def __init__(self):
@@ -122,15 +122,15 @@ mx_softmax = constructCNN("idsia")
 # mx.viz.plot_network(mx_softmax, shape={"data":(batch_size, 3, resize_size[0], resize_size[1])})
 
 # Initialization params
-mx_nor_dict = {'normal': 0.01}
-mx_cons_dict = {'constant': 0.0}
-mx_init_dict = {}
-for layer in mx_softmax.list_arguments():
-    hh = layer.split('_')
-    if hh[-1] == 'weight':
-        mx_init_dict[layer] = mx_nor_dict
-    elif hh[-1] == 'bias':
-        mx_init_dict[layer] = mx_cons_dict
+# mx_nor_dict = {'normal': 0.01}
+# mx_cons_dict = {'constant': 0.0}
+# mx_init_dict = {}
+# for layer in mx_softmax.list_arguments():
+#     hh = layer.split('_')
+#     if hh[-1] == 'weight':
+#         mx_init_dict[layer] = mx_nor_dict
+#     elif hh[-1] == 'bias':
+#         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
 backends = ['cpu']
@@ -154,7 +154,7 @@ for b in backends:
         # allocate memory given the input data and label shapes
         mx_model.bind(data_shapes=mx_train_set.provide_data, label_shapes=mx_train_set.provide_label)
         # initialize parameters by uniform random numbers
-        mx_model.init_params()
+        mx_model.init_params(mx.initializer.MSRAPrelu('in', 0.0))
         # use SGD with learning rate 0.1 to train
         mx_model.init_optimizer(optimizer='sgd', optimizer_params=(('learning_rate', 0.01), ('momentum', 0.9)))
         # use accuracy as the metric

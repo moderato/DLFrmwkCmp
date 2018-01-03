@@ -59,15 +59,15 @@ class LuganoNet(torch.nn.Module):
         self.csf.add_module("torch_fc2", torch.nn.Linear(200, class_num))
         
         # Initialize conv layers and fc layers
-        torch_init.normal(self.conv.state_dict()["torch_conv1.weight"], mean=0, std=0.01)
+        torch_init.kaiming_normal(self.conv.state_dict()["torch_conv1.weight"])
         torch_init.constant(self.conv.state_dict()["torch_conv1.bias"], 0.0)
-        torch_init.normal(self.conv.state_dict()["torch_conv2.weight"], mean=0, std=0.01)
+        torch_init.kaiming_normal(self.conv.state_dict()["torch_conv2.weight"])
         torch_init.constant(self.conv.state_dict()["torch_conv2.bias"], 0.0)
-        torch_init.normal(self.conv.state_dict()["torch_conv3.weight"], mean=0, std=0.01)
+        torch_init.kaiming_normal(self.conv.state_dict()["torch_conv3.weight"])
         torch_init.constant(self.conv.state_dict()["torch_conv3.bias"], 0.0)
-        torch_init.normal(self.csf.state_dict()["torch_fc1.weight"], mean=0, std=0.01)
+        torch_init.kaiming_normal(self.csf.state_dict()["torch_fc1.weight"])
         torch_init.constant(self.csf.state_dict()["torch_fc1.bias"], 0.0)
-        torch_init.normal(self.csf.state_dict()["torch_fc2.weight"], mean=0, std=0.01)
+        torch_init.kaiming_normal(self.csf.state_dict()["torch_fc2.weight"])
         torch_init.constant(self.csf.state_dict()["torch_fc2.bias"], 0.0)
 
     def forward(self, x):

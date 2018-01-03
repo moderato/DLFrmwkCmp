@@ -25,17 +25,17 @@ from neon.backends import gen_backend, cleanup_backend
 from neon.initializers import (
     Gaussian, 
     Constant, 
-    GlorotUniform
+    Kaiming
 )
 from neon.layers import GeneralizedCost, Affine
 from neon.backends.backend import Block
 from neon.layers import (
-    Conv as neon_Conv, 
-    Dropout as neon_Dropout, 
-    Pooling as neon_Pooling
+    Conv as Conv, 
+    Dropout, 
+    Pooling
 )
 from neon.transforms import (
-    Rectlin, 
+    Rectlin, au
     Softmax, 
     CrossEntropyMulti, 
     Misclassification, 
@@ -44,8 +44,8 @@ from neon.transforms import (
 )
 from neon.models import Model
 from neon.optimizers import (
-    GradientDescentMomentum as neon_SGD, 
-    RMSProp as neon_RMSProp, 
+    GradientDescentMomentum as SGD, 
+    RMSProp, 
     ExpSchedule
 )
 from neon.callbacks.callbacks import Callbacks, Callback, LossCallback
@@ -133,23 +133,23 @@ class SelfModel(Model):
 def constructCNN(cnn_type="self"):
     layers = []
     if cnn_type == "idsia":
-        layers.append(neon_Conv((3, 3, 100), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
-        layers.append(neon_Conv((4, 4, 150), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
-        layers.append(neon_Conv((3, 3, 250), strides=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv3"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool3"))
-        layers.append(Affine(nout=200, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
-        layers.append(Affine(nout=class_num, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+        layers.append(Conv((3, 3, 100), strides=1, init=Kaiming(), bias=Constant(0.0), activation=Rectlin(), name="Conv1"))
+        layers.append(Pooling(2, op="max", strides=2, name="neon_pool1"))
+        layers.append(Conv((4, 4, 150), strides=1, init=Kaiming(), bias=Constant(0.0), activation=Rectlin(), name="Conv2"))
+        layers.append(Pooling(2, op="max", strides=2, name="neon_pool2"))
+        layers.append(Conv((3, 3, 250), strides=1, init=Kaiming(), bias=Constant(0.0), activation=Rectlin(), name="Conv3"))
+        layers.append(Pooling(2, op="max", strides=2, name="neon_pool3"))
+        layers.append(Affine(nout=200, init=Kaiming(local=False), bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
+        layers.append(Affine(nout=class_num, init=Kaiming(local=False), bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "self":
-        layers.append(neon_Conv((5, 5, 64), strides=2, padding=2, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv1"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool1"))
-        layers.append(neon_Conv((3, 3, 512), strides=1, padding=1, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_conv2"))
-        layers.append(neon_Pooling(2, op="max", strides=2, name="neon_pool2"))
-    #     layers.append(neon_Pooling(5, op="avg", name="neon_global_pool"))
-        layers.append(Affine(nout=2048, init=neon_gaussInit, bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
+        layers.append(Conv((5, 5, 64), strides=2, padding=2, init=Kaiming(), bias=Constant(0.0), activation=Rectlin(), name="Conv1"))
+        layers.append(Pooling(2, op="max", strides=2, name="neon_pool1"))
+        layers.append(Conv((3, 3, 512), strides=1, padding=1, init=Kaiming(), bias=Constant(0.0), activation=Rectlin(), name="Conv2"))
+        layers.append(Pooling(2, op="max", strides=2, name="neon_pool2"))
+    #     layers.append(Pooling(5, op="avg", name="neon_global_pool"))
+        layers.append(Affine(nout=2048, init=Kaiming(local=False), bias=Constant(0.0), activation=Rectlin(), name="neon_fc1"))
         layers.append(neon_Dropout(keep=0.5, name="neon_dropout1"))
-        layers.append(Affine(nout=class_num, init=neon_gaussInit, bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
+        layers.append(Affine(nout=class_num, init=Kaiming(local=False), bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "resnet-56":
         layers = resnet(9, class_num) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
@@ -159,7 +159,6 @@ def constructCNN(cnn_type="self"):
 
 mlp = None
 neon_backends = ["cpu", "mkl", "gpu"]
-neon_gaussInit = Gaussian(loc=0.0, scale=0.01)
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
 run_or_not = {"cpu": True, "mkl": False, "gpu": False}
@@ -193,8 +192,8 @@ for b in neon_backends:
 
         # Learning rules
 
-        neon_optimizer = neon_SGD(neon_lr[b], momentum_coef=0.9, schedule=ExpSchedule(0.2))
-    #     neon_optimizer = neon_RMSProp(learning_rate=0.0001, decay_rate=0.95)
+        neon_optimizer = SGD(neon_lr[b], momentum_coef=0.9, schedule=ExpSchedule(0.2))
+    #     neon_optimizer = RMSProp(learning_rate=0.0001, decay_rate=0.95)
 
         # # Benchmark for 20 minibatches
         # d[b] = mlp.benchmark(neon_train_set, cost=neon_cost, optimizer=neon_optimizer)
