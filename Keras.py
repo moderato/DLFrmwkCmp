@@ -23,6 +23,8 @@ epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
 process = sys.argv[7]
 printing = True if sys.argv[8] == '1' else False
+backends = sys.argv[9:]
+print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
@@ -139,9 +141,7 @@ def set_keras_backend(backend):
         reload(K)
         assert K.backend() == backend
 
-from sys import platform
-backends = ["tensorflow", "theano"]
-# if platform != "darwin":
+# if sys.platform != "darwin":
 #     backends.append("cntk")
 
 device = None

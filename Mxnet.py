@@ -23,6 +23,8 @@ epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
 process = sys.argv[7]
 printing = True if sys.argv[8] == '1' else False
+backends = sys.argv[9:]
+print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
@@ -140,7 +142,6 @@ mx_softmax = constructCNN(network_type)
 #         mx_init_dict[layer] = mx_cons_dict
 # print(mx_init_dict)
 
-backends = ['gpu', 'cpu']
 for b in backends:
     print("Using {} backend".format(b))
     # create a trainable module on CPU/GPU

@@ -23,6 +23,8 @@ epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
 process = sys.argv[7]
 printing = True if sys.argv[8] == '1' else False
+backends = sys.argv[9:]
+print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
@@ -228,7 +230,6 @@ def valid(torch_model, optimizer, valid_set, f, gpu = False, epoch = None):
         100. * correct / len(valid_set.dataset)))
 
 # CPU & GPU
-backends = ['gpu', 'cpu']
 for b in backends:
     print("Run on {}".format(b))
     use_gpu = (b == 'gpu')

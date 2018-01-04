@@ -23,6 +23,8 @@ epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
 process = sys.argv[7]
 printing = True if sys.argv[8] == '1' else False
+backends = sys.argv[9:]
+print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
@@ -164,90 +166,87 @@ def constructCNN(cnn_type="self"):
     return layers
 
 mlp = None
-neon_backends = ["cpu", "mkl", "gpu"]
 d = dict()
 neon_lr = {"cpu": 0.01, "mkl": 0.01, "gpu": 0.01}
-run_or_not = {"cpu": False, "mkl": True, "gpu": False}
 
 cleanup_backend()
 
-for b in neon_backends:
-    if run_or_not[b]:
-        print("Use {} as backend.".format(b))
+for b in backends:
+    print("Use {} as backend.".format(b))
 
-        # Set up backend
-        # backend: 'cpu' for single cpu, 'mkl' for cpu using mkl library, and 'gpu' for gpu
-        be = gen_backend(backend=b, batch_size=batch_size, rng_seed=542, datatype=np.float32)
-        print(type(be))
+    # Set up backend
+    # backend: 'cpu' for single cpu, 'mkl' for cpu using mkl library, and 'gpu' for gpu
+    be = gen_backend(backend=b, batch_size=batch_size, rng_seed=542, datatype=np.float32)
+    print(type(be))
 
-        # Make iterators
-        x_train, x_valid, neon_y_train, neon_y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
-        neon_train_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_train]), y=np.asarray(neon_y_train), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
-        neon_valid_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_valid]), y=np.asarray(neon_y_valid), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
-        neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
+    # Make iterators
+    x_train, x_valid, neon_y_train, neon_y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
+    neon_train_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_train]), y=np.asarray(neon_y_train), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
+    neon_valid_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in x_valid]), y=np.asarray(neon_y_valid), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
+    neon_test_set = ArrayIterator(X=np.asarray([t.flatten().astype('float32')/255 for t in testImages]), y=np.asarray(testLabels), make_onehot=True, nclass=class_num, lshape=(3, resize_size[0], resize_size[1]))
 
-        # Initialize model object
-        mlp = SelfModel(layers=constructCNN(network_type))
+    # Initialize model object
+    mlp = SelfModel(layers=constructCNN(network_type))
 
-        # Costs
-        neon_cost = GeneralizedCost(costfunc=CrossEntropyMulti())
+    # Costs
+    neon_cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
-        # Model summary
-        mlp.initialize(neon_train_set, neon_cost)
-        print(mlp)
+    # Model summary
+    mlp.initialize(neon_train_set, neon_cost)
+    print(mlp)
 
-        # Learning rules
+    # Learning rules
 
-        neon_optimizer = SGD(neon_lr[b], momentum_coef=0.9, schedule=ExpSchedule(0.2))
-    #     neon_optimizer = RMSProp(learning_rate=0.0001, decay_rate=0.95)
+    neon_optimizer = SGD(neon_lr[b], momentum_coef=0.9, schedule=ExpSchedule(0.2))
+#     neon_optimizer = RMSProp(learning_rate=0.0001, decay_rate=0.95)
 
-        # # Benchmark for 20 minibatches
-        # d[b] = mlp.benchmark(neon_train_set, cost=neon_cost, optimizer=neon_optimizer)
+    # # Benchmark for 20 minibatches
+    # d[b] = mlp.benchmark(neon_train_set, cost=neon_cost, optimizer=neon_optimizer)
 
-        # Reset model
-        # mlp = None
-        # mlp = Model(layers=layers)
-        # mlp.initialize(neon_train_set, neon_cost)
+    # Reset model
+    # mlp = None
+    # mlp = Model(layers=layers)
+    # mlp.initialize(neon_train_set, neon_cost)
 
-        # Callbacks: validate on validation set
-        callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/callback_data_neon_{}_{}.h5".format(root, network_type, b, dataset))
-        callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
+    # Callbacks: validate on validation set
+    callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/callback_data_neon_{}_{}.h5".format(root, network_type, b, dataset))
+    callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
 
-        # Fit
-        start = time.time()
-        mlp.fit(neon_train_set, optimizer=neon_optimizer, num_epochs=epoch_num, cost=neon_cost, callbacks=callbacks)
-        print("Neon training finishes in {:.2f} seconds.".format(time.time() - start))
+    # Fit
+    start = time.time()
+    mlp.fit(neon_train_set, optimizer=neon_optimizer, num_epochs=epoch_num, cost=neon_cost, callbacks=callbacks)
+    print("Neon training finishes in {:.2f} seconds.".format(time.time() - start))
 
-        # Result
-        # results = mlp.get_outputs(neon_valid_set)
+    # Result
+    # results = mlp.get_outputs(neon_valid_set)
 
-        # Print error on validation set
-        # start = time.time()
-        # neon_error_mis = mlp.eval(neon_valid_set, metric=Misclassification())*100
-        # print('Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_mis[0], time.time() - start))
+    # Print error on validation set
+    # start = time.time()
+    # neon_error_mis = mlp.eval(neon_valid_set, metric=Misclassification())*100
+    # print('Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_mis[0], time.time() - start))
 
-        # start = time.time()
-        # neon_error_top3 = mlp.eval(neon_valid_set, metric=TopKMisclassification(3))*100
-        # print('Top 3 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top3[2], time.time() - start))
+    # start = time.time()
+    # neon_error_top3 = mlp.eval(neon_valid_set, metric=TopKMisclassification(3))*100
+    # print('Top 3 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top3[2], time.time() - start))
 
-        # start = time.time()
-        # neon_error_top5 = mlp.eval(neon_valid_set, metric=TopKMisclassification(5))*100
-        # print('Top 5 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top5[2], time.time() - start))
+    # start = time.time()
+    # neon_error_top5 = mlp.eval(neon_valid_set, metric=TopKMisclassification(5))*100
+    # print('Top 5 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top5[2], time.time() - start))
 
-        mlp.save_params("{}saved_models/{}/neon_weights_{}_{}.prm".format(root, network_type, b, dataset))
+    mlp.save_params("{}saved_models/{}/neon_weights_{}_{}.prm".format(root, network_type, b, dataset))
 
-        # # Print error on test set
-        # start = time.time()
-        # neon_error_mis_t = mlp.eval(neon_test_set, metric=Misclassification())*100
-        # print('Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_mis_t[0], time.time() - start))
+    # # Print error on test set
+    # start = time.time()
+    # neon_error_mis_t = mlp.eval(neon_test_set, metric=Misclassification())*100
+    # print('Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_mis_t[0], time.time() - start))
 
-        # start = time.time()
-        # neon_error_top3_t = mlp.eval(neon_test_set, metric=TopKMisclassification(3))*100
-        # print('Top 3 Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_top3_t[2], time.time() - start))
+    # start = time.time()
+    # neon_error_top3_t = mlp.eval(neon_test_set, metric=TopKMisclassification(3))*100
+    # print('Top 3 Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_top3_t[2], time.time() - start))
 
-        # start = time.time()
-        # neon_error_top5_t = mlp.eval(neon_test_set, metric=TopKMisclassification(5))*100
-        # print('Top 5 Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_top5_t[2], time.time() - start))
+    # start = time.time()
+    # neon_error_top5_t = mlp.eval(neon_test_set, metric=TopKMisclassification(5))*100
+    # print('Top 5 Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_top5_t[2], time.time() - start))
 
-        cleanup_backend()
-        mlp = None
+    cleanup_backend()
+    mlp = None
