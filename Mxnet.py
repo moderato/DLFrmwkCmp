@@ -152,7 +152,7 @@ for b in backends:
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
-    filename = "{}/saved_data/{}/callback_data_mxnet_{}_{}.h5".format(root, network_type, b, dataset)
+    filename = "{}/saved_data/{}/{}/callback_data_mxnet_{}.h5".format(root, network_type, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
     try:
@@ -222,8 +222,8 @@ for b in backends:
         f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1] * 100.0)
         print("Accuracy score is %f" % (score[0][1]))
 
-        mx_model.save_params("{}saved_models/{}/mxnet_{}_{}.params".format(root, network_type, b, dataset))
-        mx_model._symbol.save("{}saved_models/{}/mxnet_{}_{}.json".format(root, network_type, b, dataset))
+        mx_model.save_params("{}saved_models/{}/{}/mxnet_{}.params".format(root, network_type, b, dataset))
+        mx_model._symbol.save("{}saved_models/{}/{}/mxnet_{}.json".format(root, network_type, b, dataset))
         
     except KeyboardInterrupt:
         pass

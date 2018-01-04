@@ -120,7 +120,7 @@ def getMap(src, bs):
 train_batch_count = len(x_train) // batch_size + 1
 valid_batch_count = len(x_valid) // batch_size + 1
 test_batch_count = len(testImages) // batch_size + 1
-filename = "{}saved_data/{}/callback_data_cntk_{}_{}.h5".format(root, network_type, backend, dataset)
+filename = "{}saved_data/{}/{}/callback_data_cntk_{}.h5".format(root, network_type, backend, dataset)
 f = DLHelper.init_h5py(filename, epoch_num, train_batch_count * epoch_num)
 
 # Start training
@@ -200,7 +200,7 @@ try:
     f['.']['infer_acc']['accuracy'][0] = np.float32((1.0 - test_error) * 100.0)
     print("Accuracy score is %f" % (1.0 - test_error))
 
-    cntk_model.save("{}saved_model/{}/cntk_{}_{}.pth".format(root, network_type, backend, dataset))
+    cntk_model.save("{}saved_model/{}/{}/cntk_{}.pth".format(root, network_type, backend, dataset))
 
 except KeyboardInterrupt:
     pass

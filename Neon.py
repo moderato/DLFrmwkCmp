@@ -209,7 +209,7 @@ for b in backends:
     # mlp.initialize(neon_train_set, neon_cost)
 
     # Callbacks: validate on validation set
-    callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/callback_data_neon_{}_{}.h5".format(root, network_type, b, dataset))
+    callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/{}/callback_data_neon_{}.h5".format(root, network_type, b, dataset))
     callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
 
     # Fit
@@ -233,7 +233,7 @@ for b in backends:
     # neon_error_top5 = mlp.eval(neon_valid_set, metric=TopKMisclassification(5))*100
     # print('Top 5 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top5[2], time.time() - start))
 
-    mlp.save_params("{}saved_models/{}/neon_weights_{}_{}.prm".format(root, network_type, b, dataset))
+    mlp.save_params("{}saved_models/{}/{}/neon_weights_{}.prm".format(root, network_type, b, dataset))
 
     # # Print error on test set
     # start = time.time()

@@ -1,25 +1,22 @@
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
-import h5py
-from sys import platform
+import h5py, sys
 # %matplotlib inline
 matplotlib.rcParams['figure.figsize'] = (10,8)
 
-if platform == "darwin":
-    root = "/Users/moderato/Downloads/GTSRB/try"
+if sys.platform == "darwin":
+    root = "/Users/moderato/Downloads"
 else:
-    root = "/home/zhongyilin/Desktop/GTSRB/try"
-
+    root = "/home/zhongyilin/Desktop"
+dataset = sys.argv[1]
+if dataset == "GT":
+    root += "/GTSRB/try"
 model = 'resnet-56'
 data_path = root + "/saved_data/" + model
-dataset = "GT"
 
 gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
-cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
-
-# gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
-# cpu_backends = ["neon_mkl", "keras_tensorflow", "keras_theano", "mxnet", "pytorch"]
+cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
 
 colors = {'neon': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
     'keras_theano': 'c', 'cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}

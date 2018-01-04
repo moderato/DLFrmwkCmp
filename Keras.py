@@ -173,9 +173,9 @@ for b in backends:
     keras_cost = "categorical_crossentropy"
     keras_model.compile(loss=keras_cost, optimizer=keras_optimizer, metrics=["acc"])
 
-    checkpointer = ModelCheckpoint(filepath="{}saved_models/{}/keras_{}_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset),
+    checkpointer = ModelCheckpoint(filepath="{}saved_models/{}/{}/keras_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset),
                                        verbose=1, save_best_only=True)
-    losses = LossHistory("{}saved_data/{}/callback_data_keras_{}_{}_{}.h5".format(root, network_type, b, device, dataset), epoch_num, max_total_batch)
+    losses = LossHistory("{}saved_data/{}/{}/callback_data_keras_{}_{}.h5".format(root, network_type, b, device, dataset), epoch_num, max_total_batch)
 
     start = time.time()
     keras_model.fit(keras_train_x, keras_train_y,
@@ -183,7 +183,7 @@ for b in backends:
                   epochs=epoch_num, batch_size=batch_size, callbacks=[checkpointer, losses], verbose=1, shuffle=True)
     print("{} training finishes in {:.2f} seconds.".format(b, time.time() - start))
 
-    keras_model.load_weights("{}saved_models/{}/keras_{}_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset)) # Load the best model (not necessary the latest one)
+    keras_model.load_weights("{}saved_models/{}/{}/keras_{}_{}_weights.hdf5".format(root, network_type, b, device, dataset)) # Load the best model (not necessary the latest one)
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
@@ -193,6 +193,6 @@ for b in backends:
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
 
     json_string = keras_model.to_json()
-    js = open("{}saved_models/{}/keras_{}_{}_{}_config.json".format(root, network_type, b, device, dataset), "w")
+    js = open("{}saved_models/{}/{}/keras_{}_{}_config.json".format(root, network_type, b, device, dataset), "w")
     js.write(json_string)
     js.close()

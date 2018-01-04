@@ -237,7 +237,7 @@ for b in backends:
     torch_model = torch_model_gpu if use_gpu else torch_model_cpu
     optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
-    filename = "{}/saved_data/{}/callback_data_pytorch_{}_{}.h5".format(root, network_type, b, dataset)
+    filename = "{}/saved_data/{}/{}/callback_data_pytorch_{}.h5".format(root, network_type, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
         f['.']['time']['train']['start_time'][0] = time.time()
@@ -258,7 +258,7 @@ for b in backends:
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
 
-        torch.save(torch_model, "{}saved_models/{}/pytorch_{}_{}.pth".format(root, network_type, b, dataset))
+        torch.save(torch_model, "{}saved_models/{}/{}/pytorch_{}.pth".format(root, network_type, b, dataset))
     except KeyboardInterrupt:
         pass
     except Exception as e:
