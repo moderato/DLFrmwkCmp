@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection as ms
 import time, sys, DLHelper
 
+print("**********************************")
+print("Training on PyTorch")
+print("**********************************")
+
 if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
@@ -17,8 +21,10 @@ else:
 dataset = sys.argv[4]
 epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
+process = sys.argv[7]
+printing = True if sys.argv[8] == '1' else False
 
-root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 import torch
@@ -146,10 +152,10 @@ torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
 torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
-torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=False)
+torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=True)
 max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
-def train(torch_model, optimizer, train_set, f, batch_count, gpu = False, epoch = None):
+def train(torch_model, optimizer, train_set, f, batch_count, gpu=False, epoch=None):
     if gpu:
         torch_model.cuda()
     torch_model.train() # Set the model to training mode
@@ -222,7 +228,7 @@ def valid(torch_model, optimizer, valid_set, f, gpu = False, epoch = None):
         100. * correct / len(valid_set.dataset)))
 
 # CPU & GPU
-backends = ['cpu']
+backends = ['gpu', 'cpu']
 for b in backends:
     print("Run on {}".format(b))
     use_gpu = (b == 'gpu')
@@ -251,7 +257,7 @@ for b in backends:
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
 
-        torch.save(torch_model, "{}saved_model/{}/pytorch_{}_{}.pth".format(root, network_type, b, dataset))
+        torch.save(torch_model, "{}saved_models/{}/pytorch_{}_{}.pth".format(root, network_type, b, dataset))
     except KeyboardInterrupt:
         pass
     except Exception as e:

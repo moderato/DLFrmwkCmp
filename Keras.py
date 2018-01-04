@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection as ms
 import time, sys, DLHelper
 
+print("**********************************")
+print("Training on Keras")
+print("**********************************")
+
 if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
@@ -17,20 +21,20 @@ else:
 dataset = sys.argv[4]
 epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
+process = sys.argv[7]
+printing = True if sys.argv[8] == '1' else False
 
-root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=True)
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Dropout, Dense, Flatten
 from keras.models import Sequential
-from keras.utils import np_utils, to_categorical
+from keras.utils import to_categorical
 from keras import backend as K
 from keras.preprocessing import image
-from keras.initializers import RandomNormal, Constant
 from keras.optimizers import SGD, RMSprop
 from keras.callbacks import ModelCheckpoint, Callback
-from keras.layers.convolutional import ZeroPadding2D
 from keras.models import model_from_json
 import os
 from timeit import default_timer
@@ -136,7 +140,7 @@ def set_keras_backend(backend):
         assert K.backend() == backend
 
 from sys import platform
-backends = ["tensorflow"]
+backends = ["tensorflow", "theano"]
 # if platform != "darwin":
 #     backends.append("cntk")
 

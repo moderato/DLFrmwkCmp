@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection as ms
 import time, sys, DLHelper
 
+print("**********************************")
+print("Training on CNTK")
+print("**********************************")
+
 if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
@@ -17,8 +21,10 @@ else:
 dataset = sys.argv[4]
 epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
+process = sys.argv[7]
+printing = True if sys.argv[8] == '1' else False
 
-root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=False)
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 import cntk as C
@@ -29,7 +35,6 @@ from cntk.io import MinibatchSourceFromData
 from cntk.logging import ProgressPrinter
 from cntk.train.training_session import *
 from cntk.initializer import he_normal
-from cntk import persist
 from timeit import default_timer
 
 backend = 'cpu'
@@ -87,9 +92,9 @@ cntk_error = ClassificationError(cntk_model, cntk_output)
 
 
 # Construct data
-cntk_train_x = np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in x_train])
-cntk_valid_x = np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in x_valid])
-cntk_test_x = np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in testImages])
+cntk_train_x = np.ascontiguousarray(np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in x_train]), dtype=np.float32)
+cntk_valid_x = np.ascontiguousarray(np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in x_valid]), dtype=np.float32)
+cntk_test_x = np.ascontiguousarray(np.vstack([np.expand_dims(x, axis=0).transpose([0,3,1,2]).astype('float32')/255 for x in testImages]), dtype=np.float32)
 
 cntk_train_y = C.one_hot(C.input_variable(1), class_num, sparse_output=False)(np.expand_dims(np.array(y_train, dtype='f'), axis=1))
 cntk_valid_y = C.one_hot(C.input_variable(1), class_num, sparse_output=False)(np.expand_dims(np.array(y_valid, dtype='f'), axis=1))
@@ -115,7 +120,7 @@ def getMap(src, bs):
 train_batch_count = len(x_train) // batch_size + 1
 valid_batch_count = len(x_valid) // batch_size + 1
 test_batch_count = len(testImages) // batch_size + 1
-filename = "{}saved_data/{}/callback_data_cntk_{}_{}.h5".format(root, backend, dataset)
+filename = "{}saved_data/{}/callback_data_cntk_{}_{}.h5".format(root, network_type, backend, dataset)
 f = DLHelper.init_h5py(filename, epoch_num, train_batch_count * epoch_num)
 
 # Start training
@@ -195,7 +200,7 @@ try:
     f['.']['infer_acc']['accuracy'][0] = np.float32((1.0 - test_error) * 100.0)
     print("Accuracy score is %f" % (1.0 - test_error))
 
-    persist(cntk_model, "{}saved_model/{}/cntk_{}_{}.pth".format(root, network_type, backend, dataset))
+    cntk_model.save("{}saved_model/{}/cntk_{}_{}.pth".format(root, network_type, backend, dataset))
 
 except KeyboardInterrupt:
     pass

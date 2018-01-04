@@ -32,7 +32,7 @@ def processImage(prefix, size, gtReader, proc_type=None, is_lisa=False, class_ma
         image = cv2.resize(image, size) # Resize images 
         if proc_type is None:
             pass
-        elif proc_type == "CLAHE" or proc_type == "clahe":
+        elif proc_type == "clahe":
             # lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB) # BGR to Lab space
             lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB) # BGR to Lab space
             tmp = np.zeros((lab.shape[0],lab.shape[1]), dtype=lab.dtype)
@@ -199,9 +199,18 @@ def getDirFuncClassNum(root, dataset="GT"):
     return root, train_dir, test_dir, readTrafficSigns, class_num
 
 
-def getImageSets(root, resize_size, dataset="GT", process=None, printing=True):
+def getImageSets(root, resize_size, dataset="GT", process='0', printing=True):
     root, train_dir, test_dir, readTrafficSigns, class_num = getDirFuncClassNum(root, dataset)
     trainImages, trainLabels, testImages, testLabels = None, None, None, None
+
+    if process == '0':
+        process = None
+    elif process == '1':
+        process = "1sigma"
+    elif process == '2':
+        process = "2sigma"
+    else: # '3'
+        process = "clahe"
 
     ## If pickle file exists, read the file
     if os.path.isfile(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original"))):
@@ -213,6 +222,7 @@ def getImageSets(root, resize_size, dataset="GT", process=None, printing=True):
         f.close()
     ## Else, read images and write to the pickle file
     else:
+        print("Process {} dataset with {} and size {}, saved to {}.".format(dataset, process, resize_size, root))
         start = time.time()
         if dataset == "GT" or dataset == "Belgium":
             trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, process, True)

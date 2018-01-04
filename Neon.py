@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from sklearn import model_selection as ms
 import time, sys, DLHelper
 
+print("**********************************")
+print("Training on Neon")
+print("**********************************")
+
 if sys.platform == "darwin":
     root = "/Users/moderato/Downloads/"
 else:
@@ -17,8 +21,10 @@ else:
 dataset = sys.argv[4]
 epoch_num = int(sys.argv[5])
 batch_size = int(sys.argv[6])
+process = sys.argv[7]
+printing = True if sys.argv[8] == '1' else False
 
-root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, printing=True)
+root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
 from neon.backends import gen_backend, cleanup_backend
