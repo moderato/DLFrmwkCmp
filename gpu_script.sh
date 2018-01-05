@@ -12,7 +12,7 @@ export KMP_AFFINITY=compact,1,0,granularity=fine # For neon
 
 export MKL_THREADING_LAYER=GNU # For theano
 
-THEANO_FLAGS=device=cuda0 python Keras.py $cnn $size_x $size_y $dataset $epoch $batch $process $print theano tensorflow
+THEANO_FLAGS='floatX=float32,device=cuda0' python Keras.py $cnn $size_x $size_y $dataset $epoch $batch $process $print theano tensorflow
 python Cntk.py $cnn $size_x $size_y $dataset $epoch $batch $process $print
 python Neon.py $cnn $size_x $size_y $dataset $epoch $batch $process $print gpu mkl
 python PyTorch.py $cnn $size_x $size_y $dataset $epoch $batch $process $print gpu
