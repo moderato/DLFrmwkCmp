@@ -269,9 +269,9 @@ def init_h5py(filename, epoch_num, max_total_batch):
         t = f.create_group('time')
         loss = t.create_dataset('loss', (epoch_num,))
         train = t.create_group('train')
-        start_time = train.create_dataset("start_time", (1,))
+        start_time = train.create_dataset("start_time", (1,), dtype='float64')
         start_time.attrs['units'] = 'seconds'
-        end_time = train.create_dataset("end_time", (1,))
+        end_time = train.create_dataset("end_time", (1,), dtype='float64')
         end_time.attrs['units'] = 'seconds'
         train_batch = t.create_dataset('train_batch', (max_total_batch,)) # Same as above
 

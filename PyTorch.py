@@ -185,6 +185,7 @@ def train(torch_model, optimizer, train_set, f, batch_count, gpu=False, epoch=No
 
         # Save batch time
         f['.']['time']['train_batch'][batch_count-1] = default_timer() - start
+        print(f['.']['time']['train_batch'][batch_count-1])
 
         # Save training loss and accuracy
         f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])
