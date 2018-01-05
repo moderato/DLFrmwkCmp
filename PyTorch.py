@@ -29,6 +29,8 @@ print("Training on {}".format(backends))
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
+_ = DLHelper.create_dir(root, ["saved_data", "saved_models"], network_type, backends)
+
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -148,13 +150,14 @@ torch_test_x = torch.stack([torch.Tensor(i.swapaxes(0,2).astype("float32")/255) 
 torch_test_y = torch.LongTensor(testLabels)
 
 torch_tensor_train_set = utils.TensorDataset(torch_train_x, torch_train_y)
-torch_train_set = utils.DataLoader(torch_tensor_train_set, batch_size=batch_size, shuffle=True)
+torch_train_set = utils.DataLoader(torch_tensor_train_set, batch_size=batch_size, shuffle=True, num_workers=4)
 torch_tensor_valid_set = utils.TensorDataset(torch_valid_x, torch_valid_y)
-torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size, shuffle=True)
+torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size, shuffle=True, num_workers=4)
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
-torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
+torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True,
+    num_workers=4)
 
-torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=True)
+torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=("gpu" in backends))
 max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
 def train(torch_model, optimizer, train_set, f, batch_count, gpu=False, epoch=None):
@@ -237,7 +240,7 @@ for b in backends:
     torch_model = torch_model_gpu if use_gpu else torch_model_cpu
     optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
-    filename = "{}/saved_data/{}/{}/callback_data_pytorch_{}.h5".format(root, network_type, b, dataset)
+    filename = "{}saved_data/{}/{}/callback_data_pytorch_{}.h5".format(root, network_type, b, dataset)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
         f['.']['time']['train']['start_time'][0] = time.time()

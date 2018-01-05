@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import h5py, sys, os
+import DLHelper
 # %matplotlib inline
 matplotlib.rcParams['figure.figsize'] = (10,8)
 
@@ -16,16 +17,7 @@ model = sys.argv[2]
 data_path = root + "/saved_data/" + model
 devices = sys.argv[3:]
 
-pics_path = root
-if not os.path.exists(pics_path + "/pics/"):
-    pics_path += "/pics/"
-    os.makedirs(pics_path)
-    if not os.path.exists(pics_path + model):
-        pics_path += model
-        os.makedirs(pics_path)
-        for device in devices:
-            if not os.path.exists(pics_path + "/" + device):
-                os.makedirs(pics_path + "/" + device)
+_ = DLHelper.create_dir(root, ["pics"], model, devices)
 
 gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
 cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]

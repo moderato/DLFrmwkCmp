@@ -298,6 +298,22 @@ def init_h5py(filename, epoch_num, max_total_batch):
 
     return f
 
+def create_dir(current_dir, subs, model, backends):
+    for sub in subs:
+        path = os.path.join(current_dir, sub)
+        if not os.path.exists(path):
+            os.makedirs(path)
+
+        path = os.path.join(path, model)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        
+        temp_path = path
+        for backend in backends:
+            path = os.path.join(temp_path, backend)
+            if not os.path.exists(path):
+                os.makedirs(path)
+
 if __name__ == '__main__':
     root = "/Users/moderato/Downloads/"
     resize_size = (48, 48)

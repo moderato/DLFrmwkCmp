@@ -29,6 +29,8 @@ print("Training on {}".format(backends))
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
+_ = DLHelper.create_dir(root, ["saved_data", "saved_models"], network_type, backends)
+
 from keras.layers import Conv2D, MaxPooling2D
 from keras.layers import Dropout, Dense, Flatten
 from keras.models import Sequential
