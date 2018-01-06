@@ -143,9 +143,6 @@ def set_keras_backend(backend):
         reload(K)
         assert K.backend() == backend
 
-# if sys.platform != "darwin":
-#     backends.append("cntk")
-
 device = None
 if os.environ['CONDA_DEFAULT_ENV'] == "neon":
     device = "gpu"
@@ -158,9 +155,9 @@ for b in backends:
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
     # Load and process images
-    keras_train_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_train])
-    keras_valid_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_valid])
-    keras_test_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in testImages])
+    keras_train_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_train]).astype('float32')
+    keras_valid_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in x_valid]).astype('float32')
+    keras_test_x = np.vstack([np.expand_dims(image.img_to_array(x), axis=0).astype('float32')/255 for x in testImages]).astype('float32')
     keras_train_y = to_categorical(y_train, class_num)
     keras_valid_y = to_categorical(y_valid, class_num)
     keras_test_y = to_categorical(testLabels, class_num)

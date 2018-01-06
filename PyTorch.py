@@ -150,12 +150,11 @@ torch_test_x = torch.stack([torch.Tensor(i.swapaxes(0,2).astype("float32")/255) 
 torch_test_y = torch.LongTensor(testLabels)
 
 torch_tensor_train_set = utils.TensorDataset(torch_train_x, torch_train_y)
-torch_train_set = utils.DataLoader(torch_tensor_train_set, batch_size=batch_size, shuffle=True, num_workers=4)
+torch_train_set = utils.DataLoader(torch_tensor_train_set, batch_size=batch_size, shuffle=True)
 torch_tensor_valid_set = utils.TensorDataset(torch_valid_x, torch_valid_y)
-torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size, shuffle=True, num_workers=4)
+torch_valid_set = utils.DataLoader(torch_tensor_valid_set, batch_size=batch_size, shuffle=True)
 torch_tensor_test_set = utils.TensorDataset(torch_test_x, torch_test_y)
-torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True,
-    num_workers=4)
+torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, shuffle=True)
 
 torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=("gpu" in backends))
 max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
@@ -185,7 +184,6 @@ def train(torch_model, optimizer, train_set, f, batch_count, gpu=False, epoch=No
 
         # Save batch time
         f['.']['time']['train_batch'][batch_count-1] = default_timer() - start
-        print(f['.']['time']['train_batch'][batch_count-1])
 
         # Save training loss and accuracy
         f['.']['cost']['train'][batch_count-1] = np.float32(train_loss.data[0])
@@ -209,7 +207,7 @@ def valid(torch_model, optimizer, valid_set, f, gpu = False, epoch = None):
     for data, target in valid_set:
         if gpu:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
+        data, target = Variable(data, requires_grad=False), Variable(target)
         output = torch_model(data)
         # output = torch_model.forward(data)
         cost = torch.nn.CrossEntropyLoss(size_average=False)
@@ -254,6 +252,7 @@ for b in backends:
             valid(torch_model, optimizer, torch_valid_set, f, use_gpu, epoch)
             
         f['.']['time']['train']['end_time'][0] = time.time()
+        print(f['.']['time']['train']['end_time'][0] - f['.']['time']['train']['start_time'][0])
 
         # Save total batch count
         f['.']['config'].attrs["total_minibatches"] = batch_count

@@ -27,8 +27,6 @@ printing = True if sys.argv[8] == '1' else False
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
 
-_ = DLHelper.create_dir(root, ["saved_data", "saved_models"], network_type, backends)
-
 import cntk as C
 import cntk_resnet
 from cntk.learners import momentum_sgd as SGD
@@ -45,6 +43,8 @@ if C.device.use_default_device().type() == 0:
 else:
     print('running on GPU')
     backend = 'gpu'
+
+_ = DLHelper.create_dir(root, ["saved_data", "saved_models"], network_type, [backend])
 
 def constructCNN(cntk_input, cnn_type='self'):
     model = None
@@ -195,7 +195,7 @@ try:
         data = getMap(cntk_test_src, batch_size)
 
         # Valid a batch
-        test_error += cntk_trainer.test_minibatch(data) * len(data[cntk_input].asarray())
+        test_error += cntk_trainer.test_minibatch(data) * data[cntk_input].num_samples
 
     test_error /= len(testImages)
 
