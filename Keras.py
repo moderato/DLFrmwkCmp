@@ -40,8 +40,10 @@ from keras.preprocessing import image
 from keras.optimizers import SGD, RMSprop
 from keras.callbacks import ModelCheckpoint, Callback
 from keras.models import model_from_json
-import os
 from timeit import default_timer
+from importlib import reload
+import tensorflow as tf
+import os
 import keras_resnet
 
 class LossHistory(Callback):
@@ -136,21 +138,37 @@ def constructCNN(cnn_type="self"):
     return keras_model
 
 # Function to dynamically change keras backend
-from importlib import reload
 def set_keras_backend(backend):
     if K.backend() != backend:
         os.environ['KERAS_BACKEND'] = backend
         reload(K)
         assert K.backend() == backend
 
-device = None
-if os.environ['CONDA_DEFAULT_ENV'] == "neon":
+device = "cpu"
+if sys.platform != "darwin" and os.environ['CONDA_DEFAULT_ENV'] == "neon": # On linux
     device = "gpu"
-else:
-    device = "cpu"
 
 for b in backends:
     set_keras_backend(b)
+
+    if b == "tensorflow":
+        num_cores = 2
+
+        if device == "gpu":
+            num_GPU = 1
+            num_CPU = 1
+        if device == "cpu":
+            num_CPU = 1
+            num_GPU = 0
+
+        config = tf.ConfigProto(\
+            intra_op_parallelism_threads=num_cores,\
+            inter_op_parallelism_threads=num_cores,\
+            allow_soft_placement=True,\
+            log_device_placement=True,\
+            device_count = {'CPU': num_CPU, 'GPU': num_GPU})
+        session = tf.Session(config=config)
+        K.set_session(session)
 
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
