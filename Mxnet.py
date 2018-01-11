@@ -17,13 +17,13 @@ network_type = sys.argv[1]
 if network_type == "idsia":
     resize_size = (48, 48)
 else:
-    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
-dataset = sys.argv[4]
-epoch_num = int(sys.argv[5])
-batch_size = int(sys.argv[6])
-process = sys.argv[7]
-printing = True if sys.argv[8] == '1' else False
-backends = sys.argv[9:]
+    resize_size = (int(sys.argv[2]), int(sys.argv[2]))
+dataset = sys.argv[3]
+epoch_num = int(sys.argv[4])
+batch_size = int(sys.argv[5])
+process = sys.argv[6]
+printing = True if sys.argv[7] == '1' else False
+backends = sys.argv[8:]
 print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
@@ -154,7 +154,7 @@ for b in backends:
         mx_model = mx.mod.Module(context = mx.gpu(0), symbol = mx_softmax)
 
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
-    filename = "{}/saved_data/{}/{}/callback_data_mxnet_{}.h5".format(root, network_type, b, dataset)
+    filename = "{}/saved_data/{}/{}/callback_data_mxnet_{}_{}by{}_{}.h5".format(root, network_type, b, dataset, resize_size[0], resize_size[0], process)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
 
     try:
@@ -180,6 +180,7 @@ for b in backends:
             mx_metric.reset()
 
             epoch_batch = 0 # The batch index in this epoch
+            epoch_start = default_timer()
             for batch in mx_train_set:
                 start = default_timer()
                 batch_count += 1
@@ -196,12 +197,13 @@ for b in backends:
                 # Save training loss
                 f['.']['cost']['train'][batch_count-1] = np.float32(mx_metric.get_name_value()[1][1])
                 f['.']['accuracy']['train'][batch_count-1] = np.float32(mx_metric.get_name_value()[0][1] * 100.0)
-                print("Epoch: {}, batch: {}, accuracy: {:.3f}, loss: {:.6f}"\
-                    .format(epoch, epoch_batch-1, mx_metric.get_name_value()[0][1], mx_metric.get_name_value()[1][1]))
+                print("Epoch: {}, batch: {}, accuracy: {:.3f}, loss: {:.6f}, batch time: {:.3f}s"\
+                    .format(epoch, epoch_batch-1, mx_metric.get_name_value()[0][1],\
+                        mx_metric.get_name_value()[1][1], train_batch_time))
             
             # Save batch marker
             f['.']['time_markers']['minibatch'][epoch] = np.float32(batch_count)
-            print('Epoch %d, Training %s' % (epoch, mx_metric.get_name_value()))
+            print('Epoch {}, Training {}, Time {:.2f}s'.format(epoch, mx_metric.get_name_value(), default_timer()-epoch_start))
 
             mx_metric.reset()
             for batch in mx_valid_set:
@@ -224,8 +226,8 @@ for b in backends:
         f['.']['infer_acc']['accuracy'][0] = np.float32(score[0][1] * 100.0)
         print("Accuracy score is %f" % (score[0][1]))
 
-        mx_model.save_params("{}saved_models/{}/{}/mxnet_{}.params".format(root, network_type, b, dataset))
-        mx_model._symbol.save("{}saved_models/{}/{}/mxnet_{}.json".format(root, network_type, b, dataset))
+        mx_model.save_params("{}saved_models/{}/{}/mxnet_{}_{}by{}_{}.params".format(root, network_type, b, dataset, resize_size[0], resize_size[0], process))
+        mx_model._symbol.save("{}saved_models/{}/{}/mxnet_{}_{}by{}_{}.json".format(root, network_type, b, dataset, resize_size[0], resize_size[0], process))
         
     except KeyboardInterrupt:
         pass

@@ -17,12 +17,12 @@ network_type = sys.argv[1]
 if network_type == "idsia":
     resize_size = (48, 48)
 else:
-    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
-dataset = sys.argv[4]
-epoch_num = int(sys.argv[5])
-batch_size = int(sys.argv[6])
-process = sys.argv[7]
-printing = True if sys.argv[8] == '1' else False
+    resize_size = (int(sys.argv[2]), int(sys.argv[2]))
+dataset = sys.argv[3]
+epoch_num = int(sys.argv[4])
+batch_size = int(sys.argv[5])
+process = sys.argv[6]
+printing = True if sys.argv[7] == '1' else False
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
 x_train, x_valid, y_train, y_valid = ms.train_test_split(trainImages, trainLabels, test_size=0.2, random_state=542)
@@ -104,7 +104,7 @@ cntk_test_y = C.one_hot(C.input_variable(1), class_num, sparse_output=False)(np.
 
 
 # Trainer and mb source
-cntk_learner = SGD(cntk_model.parameters, lr=0.01, momentum=0.9)
+cntk_learner = SGD(cntk_model.parameters, lr=0.01, momentum=0.9, unit_gain=False, use_mean_gradient=True) # To compare performance with other frameworks
 cntk_trainer = C.Trainer(cntk_model, (cntk_cost, cntk_error), cntk_learner)
 cntk_train_src = C.io.MinibatchSourceFromData(dict(x=C.Value(cntk_train_x), y=C.Value(cntk_train_y)), max_samples=len(cntk_train_x))
 cntk_valid_src = C.io.MinibatchSourceFromData(dict(x=C.Value(cntk_valid_x), y=C.Value(cntk_valid_y)), max_samples=len(cntk_valid_x))
@@ -122,7 +122,7 @@ def getMap(src, bs):
 train_batch_count = len(x_train) // batch_size + 1
 valid_batch_count = len(x_valid) // batch_size + 1
 test_batch_count = len(testImages) // batch_size + 1
-filename = "{}saved_data/{}/{}/callback_data_cntk_{}.h5".format(root, network_type, backend, dataset)
+filename = "{}saved_data/{}/{}/callback_data_cntk_{}_{}by{}_{}.h5".format(root, network_type, backend, dataset, resize_size[0], resize_size[0], process)
 f = DLHelper.init_h5py(filename, epoch_num, train_batch_count * epoch_num)
 
 # Start training
@@ -202,7 +202,7 @@ try:
     f['.']['infer_acc']['accuracy'][0] = np.float32((1.0 - test_error) * 100.0)
     print("Accuracy score is %f" % (1.0 - test_error))
 
-    cntk_model.save("{}saved_model/{}/{}/cntk_{}.pth".format(root, network_type, backend, dataset))
+    cntk_model.save("{}saved_model/{}/{}/cntk_{}_{}by{}_{}.pth".format(root, network_type, backend, dataset, resize_size[0], resize_size[0], process))
 
 except KeyboardInterrupt:
     pass

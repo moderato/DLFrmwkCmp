@@ -149,7 +149,7 @@ def get_symbol(num_classes, num_layers, image_shape, conv_workspace=256, dtype='
     image_shape = [int(l) for l in image_shape.split(',')]
     (nchannel, height, width) = image_shape
     # if height <= 28:
-    if height <= 48: # Use this branch for (48, 48)
+    if height <= 64: # Use this branch for (48, 48)
         num_stages = 3
         if (num_layers-2) % 9 == 0 and num_layers >= 164:
             per_unit = [(num_layers-2)//9]

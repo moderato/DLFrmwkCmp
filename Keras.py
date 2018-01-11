@@ -17,13 +17,13 @@ network_type = sys.argv[1]
 if network_type == "idsia":
     resize_size = (48, 48)
 else:
-    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
-dataset = sys.argv[4]
-epoch_num = int(sys.argv[5])
-batch_size = int(sys.argv[6])
-process = sys.argv[7]
-printing = True if sys.argv[8] == '1' else False
-backends = sys.argv[9:]
+    resize_size = (int(sys.argv[2]), int(sys.argv[2]))
+dataset = sys.argv[3]
+epoch_num = int(sys.argv[4])
+batch_size = int(sys.argv[5])
+process = sys.argv[6]
+printing = True if sys.argv[7] == '1' else False
+backends = sys.argv[8:]
 print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
@@ -151,24 +151,23 @@ if sys.platform != "darwin" and os.environ['CONDA_DEFAULT_ENV'] == "neon": # On 
 for b in backends:
     set_keras_backend(b)
 
-    if b == "tensorflow":
-        num_cores = 2
+    # if b == "tensorflow":
+    #     num_cores = 8
 
-        if device == "gpu":
-            num_GPU = 1
-            num_CPU = 1
-        if device == "cpu":
-            num_CPU = 1
-            num_GPU = 0
+    #     if device == "gpu":
+    #         num_GPU = 1
+    #         num_CPU = 1
+    #     if device == "cpu":
+    #         num_CPU = 1
+    #         num_GPU = 0
 
-        config = tf.ConfigProto(\
-            intra_op_parallelism_threads=num_cores,\
-            inter_op_parallelism_threads=num_cores,\
-            allow_soft_placement=True,\
-            log_device_placement=True,\
-            device_count = {'CPU': num_CPU, 'GPU': num_GPU})
-        session = tf.Session(config=config)
-        K.set_session(session)
+    #     config = tf.ConfigProto(\
+    #         intra_op_parallelism_threads=num_cores,\
+    #         inter_op_parallelism_threads=num_cores,\
+    #         allow_soft_placement=True,\
+    #         device_count = {'CPU': 8, 'GPU': num_GPU})
+    #     session = tf.Session(config=config)
+    #     K.set_session(session)
 
     max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
@@ -190,9 +189,9 @@ for b in backends:
     keras_cost = "categorical_crossentropy"
     keras_model.compile(loss=keras_cost, optimizer=keras_optimizer, metrics=["acc"])
 
-    checkpointer = ModelCheckpoint(filepath="{}saved_models/{}/{}/keras_{}_{}_weights.hdf5".format(root, network_type, device, b, dataset),
+    checkpointer = ModelCheckpoint(filepath="{}saved_models/{}/{}/keras_{}_{}_{}by{}_{}_weights.hdf5".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process),
                                        verbose=1, save_best_only=True)
-    losses = LossHistory("{}saved_data/{}/{}/callback_data_keras_{}_{}.h5".format(root, network_type, device, b, dataset), epoch_num, max_total_batch)
+    losses = LossHistory("{}saved_data/{}/{}/callback_data_keras_{}_{}_{}by{}_{}.h5".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process), epoch_num, max_total_batch)
 
     start = time.time()
     keras_model.fit(keras_train_x, keras_train_y,
@@ -200,7 +199,7 @@ for b in backends:
                   epochs=epoch_num, batch_size=batch_size, callbacks=[checkpointer, losses], verbose=1, shuffle=True)
     print("{} training finishes in {:.2f} seconds.".format(b, time.time() - start))
 
-    keras_model.load_weights("{}saved_models/{}/{}/keras_{}_{}_weights.hdf5".format(root, network_type, device, b, dataset)) # Load the best model (not necessary the latest one)
+    keras_model.load_weights("{}saved_models/{}/{}/keras_{}_{}_{}by{}_{}_weights.hdf5".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process)) # Load the best model (not necessary the latest one)
     keras_predictions = [np.argmax(keras_model.predict(np.expand_dims(feature, axis=0))) for feature in keras_test_x]
 
     # report test accuracy
@@ -210,6 +209,6 @@ for b in backends:
     print('{} test accuracy: {:.1f}%'.format(b, keras_test_accuracy))
 
     json_string = keras_model.to_json()
-    js = open("{}saved_models/{}/{}/keras_{}_{}_config.json".format(root, network_type, device, b, dataset), "w")
+    js = open("{}saved_models/{}/{}/keras_{}_{}_{}by{}_{}_config.json".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process), "w")
     js.write(json_string)
     js.close()

@@ -17,13 +17,13 @@ network_type = sys.argv[1]
 if network_type == "idsia":
     resize_size = (48, 48)
 else:
-    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
-dataset = sys.argv[4]
-epoch_num = int(sys.argv[5])
-batch_size = int(sys.argv[6])
-process = sys.argv[7]
-printing = True if sys.argv[8] == '1' else False
-backends = sys.argv[9:]
+    resize_size = (int(sys.argv[2]), int(sys.argv[2]))
+dataset = sys.argv[3]
+epoch_num = int(sys.argv[4])
+batch_size = int(sys.argv[5])
+process = sys.argv[6]
+printing = True if sys.argv[7] == '1' else False
+backends = sys.argv[8:]
 print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
@@ -239,7 +239,7 @@ for b in backends:
     torch_model = torch_model_gpu if use_gpu else torch_model_cpu
     optimizer = optim.SGD(torch_model.parameters(), lr=0.01, momentum=0.9)
 
-    filename = "{}saved_data/{}/{}/callback_data_pytorch_{}.h5".format(root, network_type, b, dataset)
+    filename = "{}saved_data/{}/{}/callback_data_pytorch_{}_{}by{}_{}.h5".format(root, network_type, b, dataset, resize_size[0], resize_size[0], process)
     f = DLHelper.init_h5py(filename, epoch_num, max_total_batch)
     try:
         f['.']['time']['train']['start_time'][0] = time.time()
@@ -261,7 +261,7 @@ for b in backends:
         # Final test
         valid(torch_model, optimizer, torch_test_set, f, use_gpu)
 
-        torch.save(torch_model, "{}saved_models/{}/{}/pytorch_{}.pth".format(root, network_type, b, dataset))
+        torch.save(torch_model, "{}saved_models/{}/{}/pytorch_{}_{}by{}_{}.pth".format(root, network_type, b, dataset, resize_size[0], resize_size[0], process))
     except KeyboardInterrupt:
         pass
     except Exception as e:

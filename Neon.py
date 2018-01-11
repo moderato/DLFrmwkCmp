@@ -17,13 +17,13 @@ network_type = sys.argv[1]
 if network_type == "idsia":
     resize_size = (48, 48)
 else:
-    resize_size = (int(sys.argv[2]), int(sys.argv[3]))
-dataset = sys.argv[4]
-epoch_num = int(sys.argv[5])
-batch_size = int(sys.argv[6])
-process = sys.argv[7]
-printing = True if sys.argv[8] == '1' else False
-backends = sys.argv[9:]
+    resize_size = (int(sys.argv[2]), int(sys.argv[2]))
+dataset = sys.argv[3]
+epoch_num = int(sys.argv[4])
+batch_size = int(sys.argv[5])
+process = sys.argv[6]
+printing = True if sys.argv[7] == '1' else False
+backends = sys.argv[8:]
 print("Training on {}".format(backends))
 
 root, trainImages, trainLabels, testImages, testLabels, class_num = DLHelper.getImageSets(root, resize_size, dataset=dataset, process=process, printing=printing)
@@ -211,7 +211,7 @@ for b in backends:
     # mlp.initialize(neon_train_set, neon_cost)
 
     # Callbacks: validate on validation set
-    callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/{}/callback_data_neon_{}_{}.h5".format(root, network_type, device, b, dataset))
+    callbacks = Callbacks(mlp, eval_set=neon_valid_set, metric=Misclassification(3), output_file="{}saved_data/{}/{}/callback_data_neon_{}_{}_{}by{}_{}.h5".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process))
     callbacks.add_callback(SelfCallback(eval_set=neon_valid_set, test_set=neon_test_set, epoch_freq=1))
 
     # Fit
@@ -223,9 +223,9 @@ for b in backends:
     # results = mlp.get_outputs(neon_valid_set)
 
     # Print error on validation set
-    # start = time.time()
-    # neon_error_mis = mlp.eval(neon_valid_set, metric=Misclassification())*100
-    # print('Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_mis[0], time.time() - start))
+    start = time.time()
+    neon_error_mis = mlp.eval(neon_valid_set, metric=Misclassification())*100
+    print('Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_mis[0], time.time() - start))
 
     # start = time.time()
     # neon_error_top3 = mlp.eval(neon_valid_set, metric=TopKMisclassification(3))*100
@@ -235,12 +235,12 @@ for b in backends:
     # neon_error_top5 = mlp.eval(neon_valid_set, metric=TopKMisclassification(5))*100
     # print('Top 5 Misclassification error = {:.1f}%. Finished in {:.2f} seconds.'.format(neon_error_top5[2], time.time() - start))
 
-    mlp.save_params("{}saved_models/{}/{}/neon_weights_{}_{}.prm".format(root, network_type, device, b, dataset))
+    mlp.save_params("{}saved_models/{}/{}/neon_weights_{}_{}_{}by{}_{}.prm".format(root, network_type, device, b, dataset, resize_size[0], resize_size[0], process))
 
-    # # Print error on test set
-    # start = time.time()
-    # neon_error_mis_t = mlp.eval(neon_test_set, metric=Misclassification())*100
-    # print('Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_mis_t[0], time.time() - start))
+    # Print error on test set
+    start = time.time()
+    neon_error_mis_t = mlp.eval(neon_test_set, metric=Misclassification())*100
+    print('Misclassification error = {:.1f}% on test set. Finished in {:.2f} seconds.'.format(neon_error_mis_t[0], time.time() - start))
 
     # start = time.time()
     # neon_error_top3_t = mlp.eval(neon_test_set, metric=TopKMisclassification(3))*100
