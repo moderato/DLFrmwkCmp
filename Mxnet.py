@@ -101,6 +101,8 @@ def constructCNN(cnn_type='self'):
         mx_softmax = get_symbol(class_num, 56, "{},{},{}".format(3, resize_size[0], resize_size[1]))
     elif cnn_type == 'resnet-32':
         mx_softmax = get_symbol(class_num, 32, "{},{},{}".format(3, resize_size[0], resize_size[1]))
+    elif cnn_type == 'resnet-20':
+        mx_softmax = get_symbol(class_num, 20, "{},{},{}".format(3, resize_size[0], resize_size[1]))
 
     return mx_softmax
 

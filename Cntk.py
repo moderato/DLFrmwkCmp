@@ -82,6 +82,8 @@ def constructCNN(cntk_input, cnn_type='self'):
         model = cntk_resnet.create_model(cntk_input, 9, class_num) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
         model = cntk_resnet.create_model(cntk_input, 5, class_num) # 6*5 + 2 = 32
+    elif cnn_type == "resnet-20":
+        model = cntk_resnet.create_model(cntk_input, 3, class_num) # 6*3 + 2 = 20
 
     return model
 

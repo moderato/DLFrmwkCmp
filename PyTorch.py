@@ -139,6 +139,10 @@ def constructCNN(cnn_type='self', gpu=True):
         torch_model_cpu = resnet(depth=32, num_classes=class_num)
         if gpu:
             torch_model_gpu = resnet(depth=32, num_classes=class_num).cuda()
+    elif cnn_type == 'resnet-20':
+        torch_model_cpu = resnet(depth=20, num_classes=class_num)
+        if gpu:
+            torch_model_gpu = resnet(depth=20, num_classes=class_num).cuda()
 
     return torch_model_cpu, torch_model_gpu
 

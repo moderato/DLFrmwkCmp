@@ -164,6 +164,8 @@ def constructCNN(cnn_type="self"):
         layers = resnet(9, class_num) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
         layers = resnet(5, class_num) # 6*5 + 2 = 32
+    elif cnn_type == "resnet-20":
+        layers = resnet(3, class_num) # 6*3 + 2 = 20
 
     return layers
 

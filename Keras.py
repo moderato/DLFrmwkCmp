@@ -134,6 +134,8 @@ def constructCNN(cnn_type="self"):
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 50, num_classes=class_num)
     elif cnn_type == "resnet-32":
         keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 32, num_classes=class_num)
+    elif cnn_type == "resnet-20":
+        keras_model = keras_resnet.resnet_v1((resize_size[0], resize_size[1], 3), 20, num_classes=class_num)
 
     return keras_model
 
