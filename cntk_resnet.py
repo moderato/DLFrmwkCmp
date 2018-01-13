@@ -8,7 +8,7 @@
 
 import numpy as np
 from cntk.initializer import he_normal, normal
-from cntk.layers import AveragePooling, MaxPooling, BatchNormalization, Convolution, Dense
+from cntk.layers import GlobalAveragePooling, MaxPooling, BatchNormalization, Convolution, Dense
 from cntk.ops import element_times, relu
 
 #

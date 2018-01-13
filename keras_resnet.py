@@ -126,8 +126,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
 
     # Add classifier on top.
     # v1 does not use BN after last shortcut connection-ReLU
-    x = GlobalAveragePooling2D()(x)
-    y = Flatten()(x)
+    y = GlobalAveragePooling2D()(x)
     outputs = Dense(num_classes,
                     activation='softmax',
                     kernel_initializer='he_normal')(y)

@@ -148,12 +148,15 @@ try:
             # Train a batch
             start = default_timer()
             cntk_trainer.train_minibatch(data)
-            # Save batch time
-            train_batch_time = default_timer() - start
-            f['.']['time']['train_batch'][batch_count-1] = train_batch_time
 
             # Save training loss
             training_loss = cntk_trainer.previous_minibatch_loss_average
+
+            # Save batch time. Prevent asynchronous
+            train_batch_time = default_timer() - start
+            f['.']['time']['train_batch'][batch_count-1] = train_batch_time
+
+            # Continue saving training loss
             eval_error = cntk_trainer.previous_minibatch_evaluation_average
             f['.']['cost']['train'][batch_count-1] = np.float32(training_loss)
             f['.']['accuracy']['train'][batch_count-1] = np.float32((1.0 - eval_error) * 100.0)
