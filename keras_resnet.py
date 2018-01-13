@@ -12,7 +12,7 @@ https://arxiv.org/pdf/1603.05027.pdf
 from __future__ import print_function
 import keras
 from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.layers import AveragePooling2D, Input, Flatten
+from keras.layers import GlobalAveragePooling2D, Input, Flatten
 from keras.optimizers import Adam
 from keras.regularizers import l2
 from keras import backend as K
@@ -126,7 +126,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
 
     # Add classifier on top.
     # v1 does not use BN after last shortcut connection-ReLU
-    x = AveragePooling2D(pool_size=8)(x)
+    x = GlobalAveragePooling2D()(x)
     y = Flatten()(x)
     outputs = Dense(num_classes,
                     activation='softmax',

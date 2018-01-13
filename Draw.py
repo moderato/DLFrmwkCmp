@@ -15,20 +15,21 @@ if dataset == "GT":
     root += "/GTSRB/try"
 model = sys.argv[2]
 data_path = root + "/saved_data/" + model
-devices = sys.argv[3:]
+size_xy = int(sys.argv[3])
+devices = sys.argv[4:]
 
 _ = DLHelper.create_dir(root, ["pics"], model, devices)
 
-gpu_backends = ["neon", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
-cpu_backends = ["neon", "neon_mkl", "keras_tensorflow", "keras_theano", "cntk", "mxnet", "pytorch"]
+gpu_backends = ["neon_gpu", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
+cpu_backends = ["neon_mkl", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
 
-colors = {'neon': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
+colors = {'neon_gpu': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
     'keras_theano': 'c', 'cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}
 
-markers = {'neon': 'o', 'neon_mkl': 'x', 'keras_tensorflow': 'p',\
+markers = {'neon_gpu': 'o', 'neon_mkl': 'x', 'keras_tensorflow': 'p',\
     'keras_theano': 'v', 'cntk': '+', 'mxnet': 's', 'pytorch': '*'}
 
-ylim_high = {'idsia': 4, 'self': 4, 'resnet-32': 2.5, 'resnet-56': 6.5}
+ylim_high = {'idsia': 4, 'self': 4, 'resnet-32': 3, 'resnet-20': 3}
 
 print("Model: {}".format(model))
 for device in devices:
@@ -68,7 +69,7 @@ for device in devices:
         train_epoch_mark = dict()
         
         print(data_path)
-        f = h5py.File(data_path+"/{}/callback_data_{}_{}.h5".format(device, b, dataset), "r")
+        f = h5py.File(data_path+"/{}/callback_data_{}_{}_{}by{}_3.h5".format(device, b, dataset, size_xy, size_xy), "r")
         actual_length = f['.']['config'].attrs['total_minibatches']
         
         train_cost_batch['{}_loss'.format(b)] = pd.Series(f['.']['cost']['train'][()]).iloc[0:actual_length] # Training loss per batch
@@ -119,7 +120,7 @@ for device in devices:
 
         # Avg training cost vs valid cost per epoch
         axes[1][int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
-            train_cost_epoch['{}_loss'.format(b)], label='{}_t'.format(b), marker=markers["neon"])
+            train_cost_epoch['{}_loss'.format(b)], label='{}_t'.format(b), marker=markers["neon_gpu"])
         # axes[1][int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
         #     valid_cost_epoch['{}_loss'.format(b)], label='{}_v'.format(b), marker=markers["neon_mkl"])
         axes[1][int(i/3)][i%3].legend(loc=4)
@@ -137,7 +138,7 @@ for device in devices:
         
         # Avg training acc vs valid acc per epoch
         axes[4][int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
-            train_acc_epoch['{}_acc'.format(b)], label='{}_t'.format(b), marker=markers["neon"])
+            train_acc_epoch['{}_acc'.format(b)], label='{}_t'.format(b), marker=markers["neon_gpu"])
         # axes[4][int(i/3)][i%3].plot(range(len(train_epoch_mark['{}_mark'.format(b)])), \
         #     valid_acc_epoch['{}_acc'.format(b)], label='{}_v'.format(b), marker=markers["neon_mkl"])
         axes[4][int(i/3)][i%3].legend(loc=4)
@@ -181,10 +182,10 @@ for device in devices:
     axes[3].set_xlabel('Time (s)')
     axes[3].set_ylabel('Validation Accuracy (%)')
 
-    figs[0].savefig(pics_path+"/train_loss_versus_time.png".format(model, device), dpi=figs[0].dpi)
-    figs[1].savefig(pics_path+"/train_and_valid_loss_versus_epoch.png".format(model, device), dpi=figs[1].dpi)
-    figs[2].savefig(pics_path+"/train_acc_versus_time.png".format(model, device), dpi=figs[2].dpi)
-    figs[3].savefig(pics_path+"/valid_acc_versus_time.png".format(model, device), dpi=figs[3].dpi)
-    figs[4].savefig(pics_path+"/train_and_valid_acc_versus_epoch.png".format(model, device), dpi=figs[4].dpi)
+    figs[0].savefig(pics_path+"/train_loss_versus_time_{}by{}.png".format(size_xy, size_xy), dpi=figs[0].dpi)
+    figs[1].savefig(pics_path+"/train_and_valid_loss_versus_epoch_{}by{}.png".format(size_xy, size_xy), dpi=figs[1].dpi)
+    figs[2].savefig(pics_path+"/train_acc_versus_time_{}by{}.png".format(size_xy, size_xy), dpi=figs[2].dpi)
+    figs[3].savefig(pics_path+"/valid_acc_versus_time_{}by{}.png".format(size_xy, size_xy), dpi=figs[3].dpi)
+    figs[4].savefig(pics_path+"/train_and_valid_acc_versus_epoch_{}by{}.png".format(size_xy, size_xy), dpi=figs[4].dpi)
     
     plt.show()
