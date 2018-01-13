@@ -25,7 +25,7 @@ def module_factory(nfm, stride=1):
     return module
 
 
-def resnet(depth, num_classes):
+def resnet(depth, num_classes, s):
     # Structure of the deep residual part of the network:
     # args.depth modules of 2 convolutional layers each at feature map depths of 16, 32, 64
     nfms = [2**(stage + 4) for stage in sorted(list(range(3)) * depth)]
@@ -35,7 +35,7 @@ def resnet(depth, num_classes):
     layers = [Conv(**conv_params(3, 16))]
     for nfm, stride in zip(nfms, strides):
         layers.append(module_factory(nfm, stride))
-    layers.append(Pooling(8, op='avg'))
+    layers.append(Pooling(s, op='avg'))
     layers.append(Affine(nout=num_classes, init=Kaiming(local=False), batch_norm=True, activation=Softmax()))
 
     return layers

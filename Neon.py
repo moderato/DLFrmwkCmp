@@ -161,11 +161,11 @@ def constructCNN(cnn_type="self"):
         layers.append(neon_Dropout(keep=0.5, name="neon_dropout1"))
         layers.append(Affine(nout=class_num, init=Kaiming(local=False), bias=Constant(0.0), activation=Softmax(), name="neon_fc2"))
     elif cnn_type == "resnet-56":
-        layers = resnet(9, class_num) # 6*9 + 2 = 56
+        layers = resnet(9, class_num, int(resize_size[0]/4)) # 6*9 + 2 = 56
     elif cnn_type == "resnet-32":
-        layers = resnet(5, class_num) # 6*5 + 2 = 32
+        layers = resnet(5, class_num, int(resize_size[0]/4)) # 6*5 + 2 = 32
     elif cnn_type == "resnet-20":
-        layers = resnet(3, class_num) # 6*3 + 2 = 20
+        layers = resnet(3, class_num, int(resize_size[0]/4)) # 6*3 + 2 = 20
 
     return layers
 
