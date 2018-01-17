@@ -20,8 +20,8 @@ devices = sys.argv[4:]
 
 _ = DLHelper.create_dir(root, ["pics"], model, devices)
 
-gpu_backends = ["neon_gpu", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
-cpu_backends = ["neon_mkl", "keras_tensorflow", "cntk", "mxnet", "pytorch"]
+gpu_backends = ["cntk", "neon_gpu", "mxnet", "pytorch", "keras_tensorflow"]
+cpu_backends = ["cntk", "neon_mkl", "mxnet", "pytorch", "keras_tensorflow"]
 
 colors = {'neon_gpu': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
     'keras_theano': 'c', 'cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}
@@ -31,11 +31,14 @@ markers = {'neon_gpu': 'o', 'neon_mkl': 'x', 'keras_tensorflow': 'p',\
 
 ylim_high = {'idsia': 4, 'self': 4, 'resnet-32': 3, 'resnet-20': 3}
 
+pics_num = 5
+
 print("Model: {}".format(model))
 for device in devices:
     pics_path = root + "/pics/" + model + "/" + device
-    figs = [None] * 5
-    axes = [None] * 5
+    figs = [None] * pics_num
+    axes = [None] * pics_num
+    table = []
 
     subplots_num = (2, 3) if device == 'gpu' else (3, 3)
     figs[0] = plt.figure()
@@ -56,7 +59,7 @@ for device in devices:
     backends = gpu_backends if device == "gpu" else cpu_backends
     infer_acc = []
     fastest = None
-    print(device)
+    # print(device)
     for i in range(len(backends)):
         b = backends[i]
 
@@ -68,7 +71,7 @@ for device in devices:
         valid_acc_epoch = pd.DataFrame()
         train_epoch_mark = dict()
         
-        print(data_path)
+        # print(data_path)
         f = h5py.File(data_path+"/{}/callback_data_{}_{}_{}by{}_3.h5".format(device, b, dataset, size_xy, size_xy), "r")
         actual_length = f['.']['config'].attrs['total_minibatches']
         
@@ -78,7 +81,7 @@ for device in devices:
         valid_cost_epoch['{}_loss'.format(b)] = pd.Series(f['.']['cost']['loss'][()])
         valid_cost_epoch['{}_t'.format(b)] = pd.Series(f['.']['time']['loss'][()])
 
-        train_acc_batch['{}_acc'.format(b)] = pd.Series(f['.']['accuracy']['train'][()]).iloc[0:actual_length] # Training loss per batch
+        train_acc_batch['{}_acc'.format(b)] = pd.Series(f['.']['accuracy']['train'][()]).iloc[0:actual_length] # Training accuracy per batch
         train_acc_batch['{}_t'.format(b)] = pd.Series(f['.']['time']['train_batch'][()]).cumsum().iloc[0:actual_length] # Training time cumsum per batch
         
         valid_acc_epoch['{}_acc'.format(b)] = pd.Series(f['.']['accuracy']['valid'][()])
@@ -151,7 +154,10 @@ for device in devices:
     print('\n')
 
     axes[0].legend(loc=4)
-    axes[0].set_ylim((-0.1,ylim_high[model]))
+    axes[0].axvline(fastest[1], linestyle='dashed', color='#777777')
+    axes[0].text(fastest[1]*1.01, 1, "First Finished Training: " + fastest[0], size=12)
+    axes[0].set_ylim((2 * 1e-5, ylim_high[model] + 2))
+    axes[0].set_yscale('log')
     axes[0].yaxis.grid(linestyle='dashdot')
     axes[0].set_xlabel('Time (s)')
     axes[0].set_ylabel('Loss')
