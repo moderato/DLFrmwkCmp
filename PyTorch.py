@@ -163,6 +163,9 @@ torch_test_set = utils.DataLoader(torch_tensor_test_set, batch_size=batch_size, 
 torch_model_cpu, torch_model_gpu = constructCNN(network_type, gpu=("gpu" in backends))
 max_total_batch = (len(x_train) // batch_size + 1) * epoch_num
 
+model_parameters = filter(lambda p: p.requires_grad, torch_model_cpu.parameters())
+prm = sum([np.prod(p.size()) for p in model_parameters])
+
 def train(torch_model, optimizer, train_set, f, batch_count, gpu=False, epoch=None):
     if gpu:
         torch_model.cuda()

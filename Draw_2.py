@@ -27,13 +27,13 @@ _ = DLHelper.create_dir(root, ["pics"], model, [device])
 gpu_backends = ["cntk", "neon_gpu", "mxnet", "pytorch", "keras_tensorflow"]
 cpu_backends = ["cntk", "neon_mkl", "mxnet", "pytorch", "keras_tensorflow"]
 
-colors = {'neon_gpu': 'royalblue', 'neon_mkl': 'g', 'keras_tensorflow': 'r',\
+colors = {'neon_gpu': 'royalblue', 'neon_mkl': 'royalblue', 'keras_tensorflow': 'r',\
     'keras_theano': 'c', 'cntk': 'm', 'mxnet': 'orange', 'pytorch': 'saddlebrown'}
 
 markers = {'neon_gpu': 'o', 'neon_mkl': 'x', 'keras_tensorflow': 'p',\
     'keras_theano': 'v', 'cntk': '+', 'mxnet': 's', 'pytorch': '*'}
 
-correct_name = {'neon_gpu': 'Neon', 'neon_mkl': 'Neon', 'neon_mkl': 'MKL', \
+correct_name = {'neon_gpu': 'Neon', 'neon_mkl': 'Neon', \
 	'keras_tensorflow': 'Tensorflow', 'keras_theano': 'Theano', \
 	'cntk': 'CNTK', 'mxnet': 'MXNet', 'pytorch': 'PyTorch'}
 

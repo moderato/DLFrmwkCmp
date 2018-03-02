@@ -181,10 +181,13 @@ for b in backends:
     keras_valid_y = to_categorical(y_valid, class_num)
     keras_test_y = to_categorical(testLabels, class_num)
 
+    print(keras_train_x.shape)
+    print(np.expand_dims(image.img_to_array(x_train[0]), axis=0).shape)
+
     # Build model
     keras_model = constructCNN(network_type)
 
-    keras_model.summary()
+    # keras_model.summary()
 
     keras_optimizer = SGD(lr=0.01, decay=1.6e-8, momentum=0.9) # Equivalent to decay rate 0.2 per epoch? Need to re-verify
 #     keras_optimizer = RMSProp(lr=0.01, decay=0.95)
