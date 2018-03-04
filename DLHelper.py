@@ -157,7 +157,7 @@ def readTrafficSigns_LISA(rootpath, size, process=None, training=True):
         under = os.listdir(folder)
         for u in under:
             if u.startswith("frame"):
-                folder = folder + '/' + u
+                folder = '/'.join([folder, u])
                 break
         annotations = folder + "/frameAnnotations.csv"
         gtFile = open(annotations)
@@ -176,19 +176,19 @@ def getDirFuncClassNum(root, dataset="GT"):
     train_dir, test_dir, readTrafficSigns = None, None, None
     class_num = -1
     if dataset == "GT":
-        root += "GTSRB/try/"
-        train_dir = root + "Final_Training/Images"
-        test_dir = root + "Final_Test/Images"
+        root = '/'.join([root, "GTSRB"])
+        train_dir = '/'.join([root, "Final_Training/Images"])
+        test_dir = '/'.join([root, "Final_Test/Images"])
         readTrafficSigns = readTrafficSigns_GT
         class_num = 43
     elif dataset == "Belgium":
-        root += "BelgiumTSC/"
-        train_dir = root + "Training"
-        test_dir = root + "Testing"
+        root = '/'.join([root, "BelgiumTSC"])
+        train_dir = '/'.join([root, "Training"])
+        test_dir = '/'.join([root, "Testing"])
         readTrafficSigns = readTrafficSigns_Belgium
         class_num = 62
     elif dataset == "LISA":
-        root += "LISA/"
+        root = '/'.join([root, "LISA"])
         train_dir = None
         test_dir = None
         readTrafficSigns = readTrafficSigns_LISA
@@ -199,22 +199,15 @@ def getDirFuncClassNum(root, dataset="GT"):
     return root, train_dir, test_dir, readTrafficSigns, class_num
 
 
-def getImageSets(root, resize_size, dataset="GT", process='0', printing=True):
+def getImageSets(root, resize_size, dataset="GT", preprocessing=None, printing=True):
     root, train_dir, test_dir, readTrafficSigns, class_num = getDirFuncClassNum(root, dataset)
     trainImages, trainLabels, testImages, testLabels = None, None, None, None
 
-    if process == '0':
-        process = None
-    elif process == '1':
-        process = "1sigma"
-    elif process == '2':
-        process = "2sigma"
-    else: # '3'
-        process = "clahe"
+    preprocessing = preprocessing if (preprocessing is not None) else "original"
 
     ## If pickle file exists, read the file
-    if os.path.isfile(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original"))):
-        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original")), 'rb')
+    if os.path.isfile(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, preprocessing)):
+        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, preprocessing), 'rb')
         trainImages = cPickle.load(f, encoding="latin1")
         trainLabels = cPickle.load(f, encoding="latin1")
         testImages = cPickle.load(f, encoding="latin1")
@@ -222,17 +215,17 @@ def getImageSets(root, resize_size, dataset="GT", process='0', printing=True):
         f.close()
     ## Else, read images and write to the pickle file
     else:
-        print("Process {} dataset with {} and size {}, saved to {}.".format(dataset, process, resize_size, root))
+        print("Process {} dataset with {} and size {}, saved to {}.".format(dataset, preprocessing, resize_size, root))
         start = time.time()
         if dataset == "GT" or dataset == "Belgium":
-            trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, process, True)
-            testImages, testLabels = readTrafficSigns(test_dir, resize_size, process, False)
+            trainImages, trainLabels = readTrafficSigns(train_dir, resize_size, preprocessing, True)
+            testImages, testLabels = readTrafficSigns(test_dir, resize_size, preprocessing, False)
         else: # LISA
-            trainImages, trainLabels, testImages, testLabels, class_num = readTrafficSigns(root, resize_size, process)
+            trainImages, trainLabels, testImages, testLabels, class_num = readTrafficSigns(root, resize_size, preprocessing)
             print(class_num)
         print("Training and testing Image preprocessing finished in {:.2f} seconds".format(time.time() - start))
         
-        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, (process if (process is not None) else "original")), 'wb')
+        f = open(root + "/processed_images_{}_{}_{}_{}.pkl".format(resize_size[0], resize_size[1], dataset, preprocessing), 'wb')
 
         for obj in [trainImages, trainLabels, testImages, testLabels]:
             cPickle.dump(obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
@@ -298,7 +291,7 @@ def init_h5py(filename, epoch_num, max_total_batch):
 
     return f
 
-def create_dir(current_dir, subs, model, backends):
+def create_dir(current_dir, subs, model, devices):
     for sub in subs:
         path = os.path.join(current_dir, sub)
         if not os.path.exists(path):
@@ -309,8 +302,8 @@ def create_dir(current_dir, subs, model, backends):
             os.makedirs(path)
         
         temp_path = path
-        for backend in backends:
-            path = os.path.join(temp_path, backend)
+        for device in devices:
+            path = os.path.join(temp_path, device)
             if not os.path.exists(path):
                 os.makedirs(path)
 
